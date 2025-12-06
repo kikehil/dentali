@@ -1,0 +1,598 @@
+<%- include('../layout', { body: `
+${necesitaSaldoInicial ? `
+<!-- Modal Saldo Inicial -->
+<div id="modalSaldoInicial" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: flex;">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+    <div class="p-6 border-b">
+      <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+        <i class="fas fa-cash-register text-primary-500"></i>
+        Saldo Inicial de Caja
+      </h3>
+      <p class="text-gray-600 mt-2">Ingresa el saldo inicial para comenzar a operar (puede ser $0.00)</p>
+    </div>
+    <div class="p-6">
+      <form id="formSaldoInicial" onsubmit="guardarSaldoInicial(event)">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Saldo Inicial ($) <span class="text-gray-500 text-xs font-normal">(puede ser 0.00)</span></label>
+          <input type="number" id="saldoInicial" step="0.01" min="0" required 
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg text-2xl font-bold text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                 placeholder="0.00" value="0.00" autofocus>
+        </div>
+        <button type="submit" class="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-medium">
+          <i class="fas fa-check mr-2"></i> Confirmar Saldo Inicial
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+` : ''}
+
+<script>
+// Asegurar que el modal se muestre si necesitaSaldoInicial es true
+document.addEventListener('DOMContentLoaded', function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const necesitaSaldoInicial = urlParams.get('necesitaSaldoInicial') === 'true';
+  
+  if (necesitaSaldoInicial) {
+    const modal = document.getElementById('modalSaldoInicial');
+    if (modal) {
+      modal.style.display = 'flex';
+      const input = document.getElementById('saldoInicial');
+      if (input) {
+        input.focus();
+        input.value = '0.00';
+      }
+    }
+  }
+  
+  // Inicializar selector de banco (oculto por defecto)
+  if (typeof mostrarBancos === 'function') {
+    mostrarBancos();
+  }
+});
+</script>
+
+<div class="grid lg:grid-cols-3 gap-4 h-[calc(100vh-140px)]">
+  <!-- Catálogo -->
+  <div class="lg:col-span-2 flex flex-col h-full">
+    <!-- Tabs y Selector de Moneda -->
+    <div class="bg-white rounded-xl shadow-sm p-3 mb-3">
+      <div class="flex justify-between items-center">
+        <div class="flex gap-4 border-b flex-1">
+          <button onclick="mostrarTab('servicios')" id="tabServicios" class="px-4 py-2 border-b-2 border-primary-500 text-primary-600 font-medium text-sm">
+            <i class="fas fa-teeth mr-2"></i> Servicios
+          </button>
+          <button onclick="mostrarTab('productos')" id="tabProductos" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm">
+            <i class="fas fa-box mr-2"></i> Productos
+          </button>
+        </div>
+        <div class="ml-4 flex items-center gap-2">
+          <label class="text-xs font-medium text-gray-700">Moneda:</label>
+          <select id="selectorMoneda" onchange="cambiarMoneda()" class="px-3 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+            <option value="MXN">MXN</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Servicios -->
+    <div id="listaServicios" class="grid md:grid-cols-2 lg:grid-cols-3 gap-2 overflow-y-auto flex-1 pb-2">
+      ` + servicios.map(function(s) {
+        return '<div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition cursor-pointer" data-tipo="servicio" data-id="' + s.id + '" data-nombre="' + s.nombre + '" data-precio="' + s.precio + '">' +
+          '<div class="flex justify-between items-start">' +
+            '<div class="flex-1 min-w-0">' +
+              '<h4 class="text-sm font-medium text-gray-800 truncate">' + s.nombre + '</h4>' +
+              '<p class="text-xs text-gray-500">' + (s.categoria || 'General') + ' - ' + s.duracion + ' min</p>' +
+            '</div>' +
+            '<p class="text-sm font-bold text-primary-600 ml-2">' + formatCurrency(s.precio) + '</p>' +
+          '</div>' +
+        '</div>';
+      }).join('') + `
+    </div>
+
+    <!-- Productos -->
+    <div id="listaProductos" class="grid md:grid-cols-2 lg:grid-cols-3 gap-2 overflow-y-auto flex-1 pb-2 hidden">
+      ` + productos.map(function(p) {
+        return '<div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition cursor-pointer ' + (p.stock <= 0 ? 'opacity-50' : '') + '" data-tipo="producto" data-id="' + p.id + '" data-nombre="' + p.nombre + '" data-precio="' + p.precio + '" data-stock="' + p.stock + '">' +
+          '<div class="flex justify-between items-start">' +
+            '<div class="flex-1 min-w-0">' +
+              '<h4 class="text-sm font-medium text-gray-800 truncate">' + p.nombre + '</h4>' +
+              '<p class="text-xs text-gray-500">Stock: ' + p.stock + '</p>' +
+            '</div>' +
+            '<p class="text-sm font-bold text-secondary-600 ml-2">' + formatCurrency(p.precio) + '</p>' +
+          '</div>' +
+        '</div>';
+      }).join('') + `
+    </div>
+  </div>
+
+  <!-- Carrito -->
+  <div class="lg:col-span-1 flex flex-col h-full">
+    <div class="bg-gradient-to-br from-primary-50 via-secondary-50 to-primary-100 rounded-xl shadow-lg border-2 border-primary-200 p-4 flex flex-col h-full">
+      <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center">
+        <div class="bg-gradient-to-r from-primary-500 to-secondary-500 p-1.5 rounded-lg mr-2">
+          <i class="fas fa-shopping-cart text-white text-sm"></i>
+        </div>
+        Carrito
+      </h3>
+
+      <div class="mb-3">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Doctor (opcional)</label>
+        <select id="doctorVenta" class="w-full px-2 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+          <option value="">Seleccionar doctor</option>
+          ` + (doctores ? doctores.map(function(d) { return '<option value="' + d.id + '">Dr. ' + d.nombre + ' ' + d.apellido + '</option>'; }).join('') : '') + `
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Paciente (opcional)</label>
+        <select id="pacienteVenta" class="w-full px-2 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+          <option value="">Cliente general</option>
+          ` + pacientes.map(function(p) { return '<option value="' + p.id + '">' + p.nombre + ' ' + p.apellido + '</option>'; }).join('') + `
+        </select>
+      </div>
+
+      <div id="itemsCarrito" class="flex-1 space-y-1.5 overflow-y-auto bg-white bg-opacity-60 rounded-lg p-2 border border-primary-200 mb-3 min-h-0">
+        <p class="text-gray-500 text-center py-4 text-sm">Carrito vacío</p>
+      </div>
+
+      <div class="border-t-2 border-primary-200 pt-3 space-y-1.5 bg-white bg-opacity-50 rounded-lg p-2 -mx-2 px-2 mb-3">
+        <div class="flex justify-between items-center text-xs mb-1">
+          <span class="text-gray-500">Moneda:</span>
+          <span id="monedaCarrito" class="font-medium text-gray-700">MXN</span>
+        </div>
+        <div class="flex justify-between text-gray-600 text-sm">
+          <span>Subtotal:</span>
+          <span id="subtotal" class="font-medium">$0.00 MXN</span>
+        </div>
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-gray-600">Descuento:</span>
+          <input type="number" id="descuento" value="0" min="0" step="0.01" class="w-20 px-2 py-1 border rounded text-right text-xs" onchange="actualizarTotales()">
+        </div>
+        <div class="flex justify-between text-lg font-bold text-gray-800">
+          <span>Total:</span>
+          <span id="total">$0.00 MXN</span>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Método de pago</label>
+        <select id="metodoPago" onchange="mostrarBancos()" class="w-full px-2 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+      </div>
+
+      <div id="selectorBanco" class="mb-3 hidden">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Banco <span class="text-red-500">*</span></label>
+        <div id="errorBanco" class="text-red-500 text-xs mb-1 hidden">Debes seleccionar un banco</div>
+        <div class="flex gap-2 justify-between">
+          <div class="flex-1 cursor-pointer banco-option" data-banco="BBVA" onclick="seleccionarBanco('BBVA')">
+            <div class="bg-white border-2 border-primary-200 rounded-lg p-2 hover:border-primary-500 transition text-center banco-item h-full flex flex-col items-center justify-center min-h-[80px]">
+              <div class="w-full h-12 mb-1 flex items-center justify-center relative">
+                <img src="/bancos/bbva.png" alt="BBVA" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
+                <div class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold h-12 w-full flex items-center justify-center" style="display:none;">BBVA</div>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Bancomer</p>
+            </div>
+          </div>
+          <div class="flex-1 cursor-pointer banco-option" data-banco="Mercado Pago" onclick="seleccionarBanco('Mercado Pago')">
+            <div class="bg-white border-2 border-primary-200 rounded-lg p-2 hover:border-primary-500 transition text-center banco-item h-full flex flex-col items-center justify-center min-h-[80px]">
+              <div class="w-full h-12 mb-1 flex items-center justify-center relative">
+                <img src="/bancos/mercadopago.png" alt="Mercado Pago" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
+                <div class="bg-blue-400 text-white px-3 py-2 rounded text-xs font-bold h-12 w-full flex items-center justify-center" style="display:none;">Mercado Pago</div>
+              </div>
+            </div>
+          </div>
+          <div class="flex-1 cursor-pointer banco-option" data-banco="Azteca" onclick="seleccionarBanco('Azteca')">
+            <div class="bg-white border-2 border-primary-200 rounded-lg p-2 hover:border-primary-500 transition text-center banco-item h-full flex flex-col items-center justify-center min-h-[80px]">
+              <div class="w-full h-12 mb-1 flex items-center justify-center relative">
+                <img src="/bancos/azteca.png" alt="Banco Azteca" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onload="this.nextElementSibling.style.display='none';">
+                <div class="bg-green-500 text-white px-3 py-2 rounded text-xs font-bold h-12 w-full flex items-center justify-center" style="display:none;">Azteca</div>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Banco Azteca</p>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="bancoSeleccionado" value="">
+      </div>
+
+      <button onclick="procesarVenta()" class="w-full bg-gradient-to-r from-secondary-500 to-secondary-600 text-white py-3.5 px-4 rounded-lg hover:from-secondary-600 hover:to-secondary-700 transition font-semibold text-base shadow-lg hover:shadow-xl">
+        <i class="fas fa-cash-register mr-2"></i> Cobrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let carrito = [];
+let monedaActual = localStorage.getItem('monedaPOS') || 'MXN';
+const tipoCambio = ` + (tipoCambio || 20.0) + `;
+
+// Funciones de conversión de moneda
+function convertirPrecio(precioMXN) {
+  if (monedaActual === 'USD') {
+    return parseFloat(precioMXN) / tipoCambio;
+  }
+  return parseFloat(precioMXN);
+}
+
+function formatearPrecio(precio) {
+  const precioConvertido = convertirPrecio(precio);
+  if (monedaActual === 'USD') {
+    return '$' + precioConvertido.toFixed(2) + ' USD';
+  }
+  return '$' + precioConvertido.toFixed(2) + ' MXN';
+}
+
+function cambiarMoneda() {
+  const selector = document.getElementById('selectorMoneda');
+  monedaActual = selector.value;
+  localStorage.setItem('monedaPOS', monedaActual);
+  actualizarPrecios();
+  renderCarrito();
+  // Actualizar moneda en el carrito
+  const monedaCarrito = document.getElementById('monedaCarrito');
+  if (monedaCarrito) {
+    monedaCarrito.textContent = monedaActual;
+  }
+}
+
+function actualizarPrecios() {
+  // Actualizar precios de servicios
+  document.querySelectorAll('#listaServicios [data-precio]').forEach(function(item) {
+    const precioOriginal = parseFloat(item.dataset.precio);
+    const precioElement = item.querySelector('p.text-primary-600, p.text-secondary-600');
+    if (precioElement) {
+      precioElement.textContent = formatearPrecio(precioOriginal);
+    }
+  });
+  
+  // Actualizar precios de productos
+  document.querySelectorAll('#listaProductos [data-precio]').forEach(function(item) {
+    const precioOriginal = parseFloat(item.dataset.precio);
+    const precioElement = item.querySelector('p.text-secondary-600');
+    if (precioElement) {
+      precioElement.textContent = formatearPrecio(precioOriginal);
+    }
+  });
+}
+
+// Inicializar moneda al cargar
+document.addEventListener('DOMContentLoaded', function() {
+  const selectorMoneda = document.getElementById('selectorMoneda');
+  if (selectorMoneda) {
+    selectorMoneda.value = monedaActual;
+    actualizarPrecios();
+  }
+  // Actualizar moneda en el carrito
+  const monedaCarrito = document.getElementById('monedaCarrito');
+  if (monedaCarrito) {
+    monedaCarrito.textContent = monedaActual;
+  }
+});
+
+// Event delegation para agregar items
+document.getElementById('listaServicios').addEventListener('click', function(e) {
+  const item = e.target.closest('[data-tipo]');
+  if (item) {
+    agregarItem(item.dataset.tipo, parseInt(item.dataset.id), item.dataset.nombre, parseFloat(item.dataset.precio));
+  }
+});
+
+document.getElementById('listaProductos').addEventListener('click', function(e) {
+  const item = e.target.closest('[data-tipo]');
+  if (item && parseInt(item.dataset.stock) > 0) {
+    agregarItem(item.dataset.tipo, parseInt(item.dataset.id), item.dataset.nombre, parseFloat(item.dataset.precio));
+  }
+});
+
+function mostrarTab(tab) {
+  document.getElementById('listaServicios').classList.toggle('hidden', tab !== 'servicios');
+  document.getElementById('listaProductos').classList.toggle('hidden', tab !== 'productos');
+  document.getElementById('tabServicios').classList.toggle('border-primary-500', tab === 'servicios');
+  document.getElementById('tabServicios').classList.toggle('text-primary-600', tab === 'servicios');
+  document.getElementById('tabProductos').classList.toggle('border-primary-500', tab === 'productos');
+  document.getElementById('tabProductos').classList.toggle('text-primary-600', tab === 'productos');
+}
+
+function agregarItem(tipo, id, nombre, precio) {
+  const existe = carrito.find(i => i.tipo === tipo && i.id === id);
+  if (existe) {
+    existe.cantidad++;
+  } else {
+    carrito.push({ tipo, id, nombre, precio, cantidad: 1 });
+  }
+  renderCarrito();
+}
+
+function quitarItem(index) {
+  carrito.splice(index, 1);
+  renderCarrito();
+}
+
+function cambiarCantidad(index, delta) {
+  carrito[index].cantidad += delta;
+  if (carrito[index].cantidad <= 0) {
+    carrito.splice(index, 1);
+  }
+  renderCarrito();
+}
+
+function renderCarrito() {
+  const container = document.getElementById('itemsCarrito');
+  if (carrito.length === 0) {
+    container.innerHTML = '<p class="text-gray-500 text-center py-4">Carrito vacío</p>';
+  } else {
+    container.innerHTML = carrito.map(function(item, i) {
+      return '<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-primary-200 shadow-sm hover:shadow-md transition">' +
+        '<div class="flex-1 min-w-0">' +
+          '<p class="text-xs font-medium text-gray-800 truncate">' + item.nombre + '</p>' +
+          '<p class="text-xs text-gray-500">' + formatearPrecio(item.precio) + ' x ' + item.cantidad + '</p>' +
+        '</div>' +
+        '<div class="flex items-center gap-1 ml-2">' +
+          '<button onclick="cambiarCantidad(' + i + ', -1)" class="w-6 h-6 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded text-xs transition">-</button>' +
+          '<span class="w-6 text-center font-medium text-gray-700 text-xs">' + item.cantidad + '</span>' +
+          '<button onclick="cambiarCantidad(' + i + ', 1)" class="w-6 h-6 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded text-xs transition">+</button>' +
+          '<button onclick="quitarItem(' + i + ')" class="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition text-xs"><i class="fas fa-trash"></i></button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+  actualizarTotales();
+}
+
+function actualizarTotales() {
+  const subtotal = carrito.reduce(function(sum, item) { return sum + (item.precio * item.cantidad); }, 0);
+  const descuento = parseFloat(document.getElementById('descuento').value) || 0;
+  const total = subtotal - descuento;
+  document.getElementById('subtotal').textContent = formatearPrecio(subtotal);
+  document.getElementById('total').textContent = formatearPrecio(total);
+}
+
+let bancoSeleccionado = '';
+
+function mostrarBancos() {
+  const metodoPago = document.getElementById('metodoPago').value;
+  const selectorBanco = document.getElementById('selectorBanco');
+  const errorBanco = document.getElementById('errorBanco');
+  
+  if (metodoPago === 'tarjeta' || metodoPago === 'transferencia') {
+    selectorBanco.classList.remove('hidden');
+    // Resetear selección cuando se cambia el método de pago
+    bancoSeleccionado = '';
+    document.getElementById('bancoSeleccionado').value = '';
+    // Resetear estilos visuales
+    document.querySelectorAll('.banco-option').forEach(function(item) {
+      const bancoItem = item.querySelector('.banco-item');
+      bancoItem.classList.remove('border-primary-500', 'bg-primary-50', 'border-red-500');
+      bancoItem.classList.add('border-primary-200');
+    });
+    // Ocultar error inicialmente
+    if (errorBanco) {
+      errorBanco.classList.add('hidden');
+    }
+  } else {
+    selectorBanco.classList.add('hidden');
+    bancoSeleccionado = '';
+    document.getElementById('bancoSeleccionado').value = '';
+    if (errorBanco) {
+      errorBanco.classList.add('hidden');
+    }
+  }
+}
+
+function seleccionarBanco(banco) {
+  bancoSeleccionado = banco;
+  document.getElementById('bancoSeleccionado').value = banco;
+  
+  // Ocultar mensaje de error
+  const errorBanco = document.getElementById('errorBanco');
+  if (errorBanco) {
+    errorBanco.classList.add('hidden');
+  }
+  
+  // Actualizar estilos visuales
+  document.querySelectorAll('.banco-option').forEach(function(item) {
+    const bancoItem = item.querySelector('.banco-item');
+    if (item.dataset.banco === banco) {
+      bancoItem.classList.add('border-primary-500', 'bg-primary-50');
+      bancoItem.classList.remove('border-primary-200', 'border-red-500');
+    } else {
+      bancoItem.classList.remove('border-primary-500', 'bg-primary-50', 'border-red-500');
+      bancoItem.classList.add('border-primary-200');
+    }
+  });
+}
+
+function procesarVenta() {
+  if (carrito.length === 0) {
+    mostrarNotificacion('warning', 'Carrito Vacío', 'Agrega productos o servicios antes de cobrar');
+    return;
+  }
+
+  const metodoPago = document.getElementById('metodoPago').value;
+  const selectorBanco = document.getElementById('selectorBanco');
+  const errorBanco = document.getElementById('errorBanco');
+  
+  // Validar que se seleccione un banco si es tarjeta o transferencia
+  if (metodoPago === 'tarjeta' || metodoPago === 'transferencia') {
+    if (!bancoSeleccionado || bancoSeleccionado === '') {
+      // Mostrar error visual
+      if (errorBanco) {
+        errorBanco.classList.remove('hidden');
+      }
+      // Resaltar visualmente los bancos
+      document.querySelectorAll('.banco-option').forEach(function(item) {
+        const bancoItem = item.querySelector('.banco-item');
+        bancoItem.classList.add('border-red-500');
+        bancoItem.classList.remove('border-primary-200');
+      });
+      // Mostrar notificación
+      mostrarNotificacion('warning', 'Banco Requerido', 'Por favor selecciona un banco para continuar');
+      // Hacer scroll al selector de banco
+      selectorBanco.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+  }
+
+  var data = {
+    pacienteId: document.getElementById('pacienteVenta').value || null,
+    doctorId: document.getElementById('doctorVenta').value || null,
+    items: carrito,
+    descuento: parseFloat(document.getElementById('descuento').value) || 0,
+    metodoPago: metodoPago,
+    banco: bancoSeleccionado || null,
+    moneda: monedaActual || 'MXN'
+  };
+
+  fetch('/pos/venta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(function(response) { return response.json(); })
+  .then(function(result) {
+    if (result.success) {
+      mostrarNotificacion('success', '¡Venta Completada!', 
+        '<div class="text-center">' +
+          '<p class="text-2xl font-bold text-green-600 mb-2">' + result.venta.total + '</p>' +
+          '<p class="text-gray-500">Folio: <span class="font-mono font-bold">' + result.venta.folio + '</span></p>' +
+        '</div>'
+      );
+      carrito = [];
+      renderCarrito();
+      document.getElementById('descuento').value = 0;
+      document.getElementById('doctorVenta').value = '';
+      document.getElementById('pacienteVenta').value = '';
+      document.getElementById('metodoPago').value = 'efectivo';
+      bancoSeleccionado = '';
+      document.getElementById('bancoSeleccionado').value = '';
+      // Resetear estilos de bancos
+      document.querySelectorAll('.banco-option').forEach(function(item) {
+        const bancoItem = item.querySelector('.banco-item');
+        bancoItem.classList.remove('border-primary-500', 'bg-primary-50', 'border-red-500');
+        bancoItem.classList.add('border-primary-200');
+      });
+      // Ocultar error de banco
+      const errorBanco = document.getElementById('errorBanco');
+      if (errorBanco) {
+        errorBanco.classList.add('hidden');
+      }
+      mostrarBancos();
+    } else {
+      mostrarNotificacion('error', 'Error', result.error);
+    }
+  })
+  .catch(function(error) { mostrarNotificacion('error', 'Error', 'No se pudo procesar la venta'); });
+}
+
+function mostrarNotificacion(tipo, titulo, mensaje) {
+  // Eliminar notificación anterior si existe
+  var existente = document.getElementById('notificacionModal');
+  if (existente) existente.remove();
+
+  var iconos = {
+    success: '<div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-check text-3xl text-green-500"></i></div>',
+    error: '<div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-times text-3xl text-red-500"></i></div>',
+    warning: '<div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-exclamation text-3xl text-amber-500"></i></div>',
+    info: '<div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-info text-3xl text-blue-500"></i></div>'
+  };
+
+  var colores = {
+    success: 'bg-green-500 hover:bg-green-600',
+    error: 'bg-red-500 hover:bg-red-600',
+    warning: 'bg-amber-500 hover:bg-amber-600',
+    info: 'bg-blue-500 hover:bg-blue-600'
+  };
+
+  var modal = document.createElement('div');
+  modal.id = 'notificacionModal';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.style.animation = 'fadeIn 0.2s ease-out';
+  modal.innerHTML = 
+    '<div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden" style="animation: slideUp 0.3s ease-out">' +
+      '<div class="p-6 text-center">' +
+        iconos[tipo] +
+        '<h3 class="text-xl font-bold text-gray-800 mb-2">' + titulo + '</h3>' +
+        '<div class="text-gray-600">' + mensaje + '</div>' +
+      '</div>' +
+      '<div class="px-6 pb-6">' +
+        '<button onclick="cerrarNotificacion()" class="w-full ' + colores[tipo] + ' text-white py-3 rounded-xl font-medium transition transform hover:scale-105">' +
+          'Aceptar' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+  
+  // Cerrar al hacer clic fuera
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) cerrarNotificacion();
+  });
+}
+
+function cerrarNotificacion() {
+  var modal = document.getElementById('notificacionModal');
+  if (modal) {
+    modal.style.animation = 'fadeOut 0.2s ease-out';
+    setTimeout(function() { modal.remove(); }, 200);
+  }
+}
+
+function guardarSaldoInicial(event) {
+  event.preventDefault();
+  const saldo = parseFloat(document.getElementById('saldoInicial').value);
+  
+  if (isNaN(saldo) || saldo < 0) {
+    mostrarNotificacion('error', 'Error', 'Ingresa un saldo válido (puede ser $0.00)');
+    return;
+  }
+  
+  // Permitir saldo cero
+  if (saldo === 0) {
+    // Confirmar si realmente quiere saldo cero
+    if (!confirm('¿Confirmas que el saldo inicial es $0.00?')) {
+      return;
+    }
+  }
+
+  fetch('/pos/saldo-inicial', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ saldoInicial: saldo })
+  })
+  .then(function(response) { return response.json(); })
+  .then(function(result) {
+    if (result.success) {
+      // Redirigir sin el parámetro necesitaSaldoInicial para evitar que se muestre de nuevo
+      window.location.href = '/pos';
+    } else {
+      mostrarNotificacion('error', 'Error', result.error || 'No se pudo guardar el saldo inicial');
+    }
+  })
+  .catch(function(error) {
+    console.error('Error al guardar saldo inicial:', error);
+    mostrarNotificacion('error', 'Error', 'Error al guardar saldo inicial. Por favor, verifica tu conexión e intenta nuevamente.');
+  });
+}
+
+</script>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+</style>
+`}) %>

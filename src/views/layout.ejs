@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | Clínica Dental</title>
+  <link rel="stylesheet" href="/css/output.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="flex">
+    <%- include('partials/sidebar') %>
+    
+    <div class="flex-1 ml-64">
+      <%- include('partials/header') %>
+      
+      <main class="px-6 pb-6">
+        <%- body %>
+      </main>
+    </div>
+  </div>
+
+  <script src="/js/main.js"></script>
+  <script>
+    // Funciones globales para corte de caja
+    function abrirModalCorteManual() {
+      var modal = document.createElement('div');
+      modal.id = 'modalCorteManual';
+      modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      modal.innerHTML = 
+        '<div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">' +
+          '<div class="p-6 border-b">' +
+            '<h3 class="text-2xl font-bold text-gray-800 flex items-center gap-3">' +
+              '<i class="fas fa-shield-alt text-red-500"></i>' +
+              'Verificación Requerida' +
+            '</h3>' +
+            '<p class="text-gray-600 mt-2">Ingresa la contraseña del administrador para realizar un corte de caja</p>' +
+          '</div>' +
+          '<div class="p-6">' +
+            '<form id="formVerificarAdmin" onsubmit="verificarAdmin(event)">' +
+              '<div class="mb-4">' +
+                '<label class="block text-sm font-medium text-gray-700 mb-2">Contraseña de Administrador</label>' +
+                '<input type="password" id="passwordAdmin" required ' +
+                       'class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" ' +
+                       'placeholder="Ingresa la contraseña" autofocus>' +
+                '<p id="errorPassword" class="text-red-500 text-sm mt-1 hidden"></p>' +
+              '</div>' +
+              '<div class="flex gap-4">' +
+                '<button type="button" onclick="cerrarModalCorteManual()" ' +
+                        'class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium">' +
+                  'Cancelar' +
+                '</button>' +
+                '<button type="submit" ' +
+                        'class="flex-1 bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-medium">' +
+                  '<i class="fas fa-check mr-2"></i> Verificar' +
+                '</button>' +
+              '</div>' +
+            '</form>' +
+          '</div>' +
+        '</div>';
+      
+      document.body.appendChild(modal);
+      
+      // Cerrar al hacer clic fuera
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) cerrarModalCorteManual();
+      });
+    }
+
+    function cerrarModalCorteManual() {
+      var modal = document.getElementById('modalCorteManual');
+      if (modal) modal.remove();
+    }
+
+    function verificarAdmin(event) {
+      event.preventDefault();
+      const password = document.getElementById('passwordAdmin').value;
+      const errorElement = document.getElementById('errorPassword');
+      
+      if (!password) {
+        errorElement.textContent = 'Ingresa la contraseña';
+        errorElement.classList.remove('hidden');
+        return;
+      }
+
+      // Deshabilitar botón mientras se verifica
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
+
+      fetch('/pos/verificar-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password })
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(result) {
+        if (result.success) {
+          cerrarModalCorteManual();
+          // Redirigir a la vista de corte manual
+          window.location.href = '/pos/corte-manual';
+        } else {
+          errorElement.textContent = result.error || 'Contraseña incorrecta';
+          errorElement.classList.remove('hidden');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Verificar';
+        }
+      })
+      .catch(function(error) {
+        errorElement.textContent = 'Error al verificar contraseña';
+        errorElement.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Verificar';
+      });
+    }
+  </script>
+</body>
+</html>
+

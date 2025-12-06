@@ -1,0 +1,40 @@
+<header class="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold text-gray-800"><%= title %></h1>
+      <p class="text-xs text-gray-500">
+        <i class="fas fa-calendar-day mr-1"></i>
+        <%= now().format('dddd, D [de] MMMM [de] YYYY [a las] HH:mm') %>
+      </p>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <% if (currentPath && currentPath.startsWith('/pos')) { %>
+      <!-- Botón Corte de Caja - Solo en módulo POS -->
+      <button onclick="abrirModalCorteManual()" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium">
+        <i class="fas fa-cut"></i>
+        <span>Corte de Caja</span>
+      </button>
+      <% } %>
+      <% if (currentPath && currentPath.startsWith('/pacientes')) { %>
+      <!-- Botón Nuevo Paciente - Solo en módulo Pacientes -->
+      <a href="/pacientes/crear" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium">
+        <i class="fas fa-plus"></i>
+        <span>Nuevo Paciente</span>
+      </a>
+      <% } %>
+      <% if (currentPath && currentPath.startsWith('/doctores')) { %>
+      <!-- Botón Nuevo Doctor - Solo en módulo Doctores -->
+      <a href="/doctores/crear" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium">
+        <i class="fas fa-plus"></i>
+        <span>Nuevo Doctor</span>
+      </a>
+      <% } %>
+      <!-- Perfil -->
+      <a href="/perfil" class="text-gray-600 hover:text-gray-800 p-2" title="Mi Perfil">
+        <i class="fas fa-cog text-lg"></i>
+      </a>
+    </div>
+  </div>
+</header>
+

@@ -1,0 +1,275 @@
+<%- include('../layout', { body: `
+<!-- Tabla de Ventas -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="p-4 border-b flex justify-between items-center">
+    <div class="flex gap-2">
+      <input type="date" id="filtroFecha" class="px-3 py-2 border rounded-lg text-sm" onchange="filtrarPorFecha()">
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Folio</th>
+          <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Fecha</th>
+          <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Paciente</th>
+          <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Items</th>
+          <th class="px-6 py-4 text-left text-sm font-medium text-gray-600">Método</th>
+          <th class="px-6 py-4 text-right text-sm font-medium text-gray-600">Total</th>
+          <th class="px-6 py-4 text-center text-sm font-medium text-gray-600">Acción</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        ` + (ventas.length > 0 ? ventas.map(function(v) {
+          // Extraer método de pago base (sin banco) para los filtros
+          let metodoBase = v.metodoPago;
+          if (v.metodoPago && (v.metodoPago.includes('Tarjeta') || v.metodoPago.includes('Transferencia') || v.metodoPago.includes('Mercado Pago'))) {
+            if (v.metodoPago.includes('Tarjeta')) {
+              metodoBase = 'tarjeta';
+            } else if (v.metodoPago.includes('Transferencia')) {
+              metodoBase = 'transferencia';
+            } else if (v.metodoPago.includes('Mercado Pago')) {
+              metodoBase = 'tarjeta'; // Mercado Pago se considera tarjeta
+            }
+          }
+          return '<tr class="hover:bg-gray-50 cursor-pointer venta-row" data-folio="' + v.folio + '" data-fecha="' + moment(v.createdAt).tz('${config.timezone}').format('DD/MM/YYYY HH:mm') + '" data-cliente="' + (v.paciente ? v.paciente.nombre + ' ' + v.paciente.apellido : 'Cliente general') + '" data-metodo="' + metodoBase + '" data-banco="' + (v.banco || '') + '" data-moneda="' + (v.moneda || 'MXN') + '" data-subtotal="' + v.subtotal + '" data-descuento="' + v.descuento + '" data-total="' + v.total + '" data-items="' + encodeURIComponent(JSON.stringify(v.items.map(function(i) { return { nombre: i.servicio ? i.servicio.nombre : (i.producto ? i.producto.nombre : 'Item'), tipo: i.tipo, cantidad: i.cantidad, precioUnit: i.precioUnit, subtotal: i.subtotal }; }))) + '">' +
+            '<td class="px-6 py-4 font-mono text-sm text-primary-600 font-bold">' + v.folio + '</td>' +
+            '<td class="px-6 py-4 text-gray-600">' + moment(v.createdAt).tz('${config.timezone}').format('DD/MM/YYYY HH:mm') + '</td>' +
+            '<td class="px-6 py-4 text-gray-800">' + (v.paciente ? v.paciente.nombre + ' ' + v.paciente.apellido : '<span class="text-gray-400">Cliente general</span>') + '</td>' +
+            '<td class="px-6 py-4"><span class="bg-gray-100 px-2 py-1 rounded-full text-xs">' + v.items.length + ' items</span></td>' +
+            '<td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs ' + 
+              (metodoBase === 'efectivo' ? 'bg-green-100 text-green-700' : metodoBase === 'tarjeta' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700') + 
+              ' capitalize">' + metodoBase + (v.banco ? ' ' + v.banco : '') + '</span></td>' +
+            '<td class="px-6 py-4 text-right font-bold text-secondary-600">' + formatCurrency(v.total) + ' <span class="text-xs text-gray-500">' + (v.moneda || 'MXN') + '</span></td>' +
+            '<td class="px-6 py-4 text-center">' +
+              '<button class="btn-ver bg-primary-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-primary-600 transition">' +
+                '<i class="fas fa-eye mr-1"></i> Ver' +
+              '</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('') : '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">No hay ventas registradas</td></tr>') + `
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Detalle de Venta -->
+<div id="modalDetalle" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 flex-shrink-0">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold"><i class="fas fa-receipt mr-2"></i>Detalle de Venta</h3>
+        <button onclick="cerrarDetalle()" class="text-white hover:text-gray-200">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+    </div>
+    
+    <div class="p-6 overflow-y-auto flex-1">
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <p class="text-xs text-gray-500">Folio</p>
+          <p id="detFolio" class="font-mono font-bold text-primary-600"></p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Fecha</p>
+          <p id="detFecha" class="font-medium"></p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Cliente</p>
+          <p id="detCliente" class="font-medium"></p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Método de Pago</p>
+          <p id="detMetodo" class="font-medium capitalize"></p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500">Moneda</p>
+          <p id="detMoneda" class="font-medium"></p>
+        </div>
+      </div>
+      
+      <div class="border-t pt-4">
+        <p class="text-sm font-bold text-gray-700 mb-2">Items</p>
+        <div id="detItems" class="space-y-2 max-h-96 overflow-y-auto pr-2"></div>
+      </div>
+      
+      <div class="border-t mt-4 pt-4 space-y-2">
+        <div class="flex justify-between text-gray-600">
+          <span>Subtotal:</span>
+          <span id="detSubtotal"></span>
+        </div>
+        <div class="flex justify-between text-gray-600">
+          <span>Descuento:</span>
+          <span id="detDescuento" class="text-red-500"></span>
+        </div>
+        <div class="flex justify-between text-xl font-bold text-gray-800">
+          <span>Total:</span>
+          <span id="detTotal" class="text-secondary-600"></span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-gray-50 px-6 py-4 flex gap-2 flex-shrink-0">
+      <button onclick="window.print()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition">
+        <i class="fas fa-print mr-2"></i>Imprimir
+      </button>
+      <button onclick="cerrarDetalle()" class="flex-1 bg-primary-500 text-white py-2 rounded-lg hover:bg-primary-600 transition">
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Event delegation para botones Ver
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.btn-ver');
+  if (btn) {
+    var row = btn.closest('.venta-row');
+    if (row) {
+      verDetalle(row);
+    }
+  }
+});
+
+function verDetalle(row) {
+  const moneda = row.dataset.moneda || 'MXN';
+  const banco = row.dataset.banco || '';
+  let metodoTexto = row.dataset.metodo;
+  if (banco) {
+    metodoTexto = metodoTexto + ' ' + banco;
+  }
+  document.getElementById('detFolio').textContent = row.dataset.folio;
+  document.getElementById('detFecha').textContent = row.dataset.fecha;
+  document.getElementById('detCliente').textContent = row.dataset.cliente;
+  document.getElementById('detMetodo').textContent = metodoTexto;
+  document.getElementById('detMoneda').textContent = moneda;
+  document.getElementById('detSubtotal').textContent = '$' + parseFloat(row.dataset.subtotal).toFixed(2) + ' ' + moneda;
+  document.getElementById('detDescuento').textContent = '-$' + parseFloat(row.dataset.descuento).toFixed(2) + ' ' + moneda;
+  document.getElementById('detTotal').textContent = '$' + parseFloat(row.dataset.total).toFixed(2) + ' ' + moneda;
+  
+  var items = JSON.parse(decodeURIComponent(row.dataset.items));
+  var itemsHtml = items.map(function(item) {
+    return '<div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">' +
+      '<div>' +
+        '<p class="font-medium text-gray-800">' + item.nombre + '</p>' +
+        '<p class="text-xs text-gray-500">' + item.tipo + ' x ' + item.cantidad + '</p>' +
+      '</div>' +
+      '<p class="font-bold text-gray-700">$' + parseFloat(item.subtotal).toFixed(2) + '</p>' +
+    '</div>';
+  }).join('');
+  document.getElementById('detItems').innerHTML = itemsHtml;
+  
+  document.getElementById('modalDetalle').classList.remove('hidden');
+}
+
+function cerrarDetalle() {
+  document.getElementById('modalDetalle').classList.add('hidden');
+}
+
+function filtrarPorFecha() {
+  var fecha = document.getElementById('filtroFecha').value;
+  if (fecha) {
+    window.location.href = '/pos/ventas?fecha=' + fecha;
+  }
+}
+
+// Cerrar modal con ESC o clic fuera
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') cerrarDetalle();
+});
+
+document.getElementById('modalDetalle').addEventListener('click', function(e) {
+  if (e.target === this) cerrarDetalle();
+});
+
+function abrirModalCorteManual() {
+  var modal = document.createElement('div');
+  modal.id = 'modalCorteManual';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.innerHTML = 
+    '<div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">' +
+      '<div class="p-6 border-b">' +
+        '<h3 class="text-2xl font-bold text-gray-800 flex items-center gap-3">' +
+          '<i class="fas fa-shield-alt text-red-500"></i>' +
+          'Verificación Requerida' +
+        '</h3>' +
+        '<p class="text-gray-600 mt-2">Ingresa la contraseña del administrador para realizar un corte manual</p>' +
+      '</div>' +
+      '<div class="p-6">' +
+        '<form id="formVerificarAdmin" onsubmit="verificarAdmin(event)">' +
+          '<div class="mb-4">' +
+            '<label class="block text-sm font-medium text-gray-700 mb-2">Contraseña de Administrador</label>' +
+            '<input type="password" id="passwordAdmin" required ' +
+                   'class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" ' +
+                   'placeholder="Ingresa la contraseña" autofocus>' +
+            '<p id="errorPassword" class="text-red-500 text-sm mt-1 hidden"></p>' +
+          '</div>' +
+          '<div class="flex gap-4">' +
+            '<button type="button" onclick="cerrarModalCorteManual()" ' +
+                    'class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium">' +
+              'Cancelar' +
+            '</button>' +
+            '<button type="submit" ' +
+                    'class="flex-1 bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-medium">' +
+              '<i class="fas fa-check mr-2"></i> Verificar' +
+            '</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>' +
+    '</div>';
+  
+  document.body.appendChild(modal);
+  
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) cerrarModalCorteManual();
+  });
+}
+
+function cerrarModalCorteManual() {
+  var modal = document.getElementById('modalCorteManual');
+  if (modal) modal.remove();
+}
+
+function verificarAdmin(event) {
+  event.preventDefault();
+  const password = document.getElementById('passwordAdmin').value;
+  const errorElement = document.getElementById('errorPassword');
+  
+  if (!password) {
+    errorElement.textContent = 'Ingresa la contraseña';
+    errorElement.classList.remove('hidden');
+    return;
+  }
+
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
+
+  fetch('/pos/verificar-admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: password })
+  })
+  .then(function(response) { return response.json(); })
+  .then(function(result) {
+    if (result.success) {
+      cerrarModalCorteManual();
+      window.location.href = '/pos/corte-manual';
+    } else {
+      errorElement.textContent = result.error || 'Contraseña incorrecta';
+      errorElement.classList.remove('hidden');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Verificar';
+    }
+  })
+  .catch(function(error) {
+    errorElement.textContent = 'Error al verificar contraseña';
+    errorElement.classList.remove('hidden');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i> Verificar';
+  });
+}
+</script>
+`}) %>

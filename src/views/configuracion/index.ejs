@@ -1,0 +1,52 @@
+<%- include('../layout', { body: `
+<div class="max-w-4xl mx-auto">
+  <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+    ` + (success ? `
+    <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+      ` + success + `
+    </div>
+    ` : '') + `
+
+    ` + (error ? `
+    <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      ` + error + `
+    </div>
+    ` : '') + `
+
+    <div class="grid md:grid-cols-2 gap-4">
+      <a href="/configuracion/cortes" class="bg-primary-500 hover:bg-primary-600 text-white p-6 rounded-lg shadow-md transition flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-lg mb-1">Horarios de Cortes</h3>
+          <p class="text-primary-100 text-sm">Configurar horarios de cortes de caja</p>
+        </div>
+        <i class="fas fa-clock text-3xl opacity-50"></i>
+      </a>
+
+      <a href="/configuracion/tipo-cambio" class="bg-amber-500 hover:bg-amber-600 text-white p-6 rounded-lg shadow-md transition flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-lg mb-1">Tipo de Cambio</h3>
+          <p class="text-amber-100 text-sm">Configurar tipo de cambio USD/MXN</p>
+        </div>
+        <i class="fas fa-exchange-alt text-3xl opacity-50"></i>
+      </a>
+
+      <a href="/configuracion/servicios" class="bg-green-500 hover:bg-green-600 text-white p-6 rounded-lg shadow-md transition flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-lg mb-1">Servicios</h3>
+          <p class="text-green-100 text-sm">Gestionar servicios dentales</p>
+        </div>
+        <i class="fas fa-teeth text-3xl opacity-50"></i>
+      </a>
+
+      <a href="/configuracion/productos" class="bg-red-500 hover:bg-red-600 text-white p-6 rounded-lg shadow-md transition flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-lg mb-1">Productos</h3>
+          <p class="text-red-100 text-sm">Gestionar productos e inventario</p>
+        </div>
+        <i class="fas fa-box text-3xl opacity-50"></i>
+      </a>
+    </div>
+  </div>
+</div>
+` }) %>
+
