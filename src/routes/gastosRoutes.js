@@ -12,3 +12,4 @@ router.get('/reporte', isAuthenticated, gastosController.reporte);
 module.exports = router;
 
 
+

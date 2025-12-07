@@ -10,3 +10,4 @@ ALTER TABLE `ventas`
   ADD CONSTRAINT `ventas_doctorId_fkey` 
   FOREIGN KEY (`doctorId`) REFERENCES `doctores`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
+
