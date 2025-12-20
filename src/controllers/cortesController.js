@@ -87,8 +87,8 @@ const historial = async (req, res) => {
       fechaInicio = moment(fecha, 'YYYY-MM-DD').tz(config.timezone).startOf('day').toDate();
       fechaFin = moment(fecha, 'YYYY-MM-DD').tz(config.timezone).endOf('day').toDate();
     } else {
-      // Por defecto, últimos 30 días
-      fechaInicio = moment().tz(config.timezone).subtract(30, 'days').startOf('day').toDate();
+      // Por defecto, solo el día actual
+      fechaInicio = moment().tz(config.timezone).startOf('day').toDate();
       fechaFin = moment().tz(config.timezone).endOf('day').toDate();
     }
 
@@ -153,9 +153,66 @@ const show = async (req, res) => {
       });
     }
 
+    // Determinar el período del corte para obtener los gastos
+    const fechaCorte = moment(corte.fecha).tz(config.timezone).startOf('day').toDate();
+    const fechaFinCorte = moment(corte.fecha).tz(config.timezone).endOf('day').toDate();
+    
+    // Buscar el último corte anterior o saldo inicial del día
+    const ultimoCorte = await prisma.corteCaja.findFirst({
+      where: {
+        fecha: { gte: fechaCorte, lte: fechaFinCorte },
+        hora: { not: null },
+        createdAt: { lt: corte.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const saldoInicialDelDia = await prisma.corteCaja.findFirst({
+      where: {
+        fecha: { gte: fechaCorte, lte: fechaFinCorte },
+        hora: null,
+        createdAt: { lt: corte.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    // Determinar desde cuándo contar los gastos
+    let desdeFecha;
+    if (ultimoCorte) {
+      desdeFecha = ultimoCorte.createdAt;
+    } else if (saldoInicialDelDia) {
+      desdeFecha = saldoInicialDelDia.createdAt;
+    } else {
+      desdeFecha = fechaCorte;
+    }
+    
+    // Obtener gastos del período
+    let gastos = [];
+    try {
+      gastos = await prisma.gasto.findMany({
+        where: {
+          createdAt: { gte: desdeFecha, lte: corte.createdAt },
+        },
+        include: {
+          usuario: {
+            select: {
+              nombre: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      });
+    } catch (error) {
+      console.error('Error al obtener gastos:', error);
+      gastos = [];
+    }
+
     res.render('cortes/ver', {
       title: 'Detalle de Corte',
       corte,
+      gastos: gastos || [],
       formatCurrency,
       moment,
     });
@@ -268,6 +325,17 @@ const store = async (req, res) => {
       },
     });
 
+    // Obtener gastos del período
+    const gastos = await prisma.gasto.findMany({
+      where: {
+        createdAt: { gte: desdeFecha },
+      },
+      select: {
+        monto: true,
+        metodoPago: true,
+      },
+    });
+
     // Calcular ventas por método de pago y banco usando funciones helper
     const ventasEfectivo = ventas
       .filter(v => getMetodoBase(v.metodoPago) === 'efectivo')
@@ -306,13 +374,19 @@ const store = async (req, res) => {
 
     const totalVentas = ventas.reduce((sum, v) => sum + parseFloat(v.total), 0);
 
+    // Calcular gastos en efectivo del período
+    const gastosEfectivo = gastos
+      .filter(g => g.metodoPago === 'efectivo')
+      .reduce((sum, g) => sum + parseFloat(g.monto), 0);
+
     // Calcular saldos finales
     const saldoFinalEfectivoCalc = parseFloat(saldoFinalEfectivo) || 0;
     const saldoFinalTarjetaCalc = parseFloat(saldoFinalTarjeta) || 0;
     const saldoFinalTransferenciaCalc = parseFloat(saldoFinalTransferencia) || 0;
 
     // Calcular diferencias
-    const diferenciaEfectivo = saldoFinalEfectivoCalc - (saldosInicialesPrevios.efectivo + ventasEfectivo);
+    // Diferencia de efectivo: saldo final - (saldo inicial + ventas en efectivo - gastos en efectivo)
+    const diferenciaEfectivo = saldoFinalEfectivoCalc - (saldosInicialesPrevios.efectivo + ventasEfectivo - gastosEfectivo);
     const diferenciaTarjeta = saldoFinalTarjetaCalc - (saldosInicialesPrevios.tarjeta + ventasTarjeta);
     const diferenciaTransferencia = saldoFinalTransferenciaCalc - (saldosInicialesPrevios.transferencia + ventasTransferencia);
     const diferenciaTotal = diferenciaEfectivo + diferenciaTarjeta + diferenciaTransferencia;
@@ -441,6 +515,23 @@ const reporte = async (req, res) => {
       },
     });
     
+    // Obtener gastos del período
+    const gastos = await prisma.gasto.findMany({
+      where: {
+        createdAt: { gte: desdeFecha, lte: corte.createdAt },
+      },
+      include: {
+        usuario: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    
     // Agrupar ventas por doctor
     const ventasPorDoctor = {};
     ventas.forEach(v => {
@@ -519,16 +610,24 @@ const reporte = async (req, res) => {
     }
     doc.moveDown();
 
+    // Detectar si es un corte de bancos
+    const esCorteBancos = parseFloat(corte.ventasEfectivo || 0) === 0 && 
+                         (parseFloat(corte.ventasTarjeta || 0) > 0 || parseFloat(corte.ventasTransferencia || 0) > 0);
+    
     // Saldos iniciales
     doc.fontSize(14).text('Saldos Iniciales', { underline: true });
     doc.fontSize(12);
-    doc.text(`Efectivo: $${parseFloat(corte.saldoInicialEfectivo).toFixed(2)}`);
+    if (!esCorteBancos) {
+      doc.text(`Efectivo: $${parseFloat(corte.saldoInicialEfectivo).toFixed(2)}`);
+    }
     const saldoInicialTarjetaTotal = parseFloat(corte.saldoInicialTarjetaAzteca || 0) +
                                     parseFloat(corte.saldoInicialTarjetaBbva || 0) +
                                     parseFloat(corte.saldoInicialTarjetaMp || 0);
     doc.text(`Tarjeta: $${saldoInicialTarjetaTotal.toFixed(2)}`);
     doc.text(`Transferencia: $${parseFloat(corte.saldoInicialTransferencia).toFixed(2)}`);
-    doc.text(`Total: $${parseFloat(corte.saldoInicial).toFixed(2)}`);
+    if (!esCorteBancos) {
+      doc.text(`Total: $${parseFloat(corte.saldoInicial).toFixed(2)}`);
+    }
     doc.moveDown();
 
     // Ventas por Doctor
@@ -542,7 +641,9 @@ const reporte = async (req, res) => {
         doc.fontSize(13).text(docVenta.doctorNombre, { underline: false, bold: true });
         doc.fontSize(11);
         doc.text(`  Total: $${totalDoc.toFixed(2)}`, { indent: 20 });
-        doc.text(`  Efectivo: $${docVenta.efectivo.toFixed(2)}`, { indent: 20 });
+        if (!esCorteBancos) {
+          doc.text(`  Efectivo: $${docVenta.efectivo.toFixed(2)}`, { indent: 20 });
+        }
         
         if (docVenta.tarjeta.total > 0) {
           doc.text(`  Tarjeta: $${docVenta.tarjeta.total.toFixed(2)}`, { indent: 20 });
@@ -576,7 +677,9 @@ const reporte = async (req, res) => {
     // Resumen de Ventas
     doc.fontSize(14).text('Resumen de Ventas del Período', { underline: true });
     doc.fontSize(12);
-    doc.text(`Efectivo: $${parseFloat(corte.ventasEfectivo).toFixed(2)}`);
+    if (!esCorteBancos) {
+      doc.text(`Efectivo: $${parseFloat(corte.ventasEfectivo).toFixed(2)}`);
+    }
     doc.text(`Tarjeta: $${parseFloat(corte.ventasTarjeta).toFixed(2)}`);
     if (parseFloat(corte.ventasTarjeta) > 0) {
       doc.text(`  - Azteca: $${parseFloat(corte.ventasTarjetaAzteca).toFixed(2)}`, { indent: 20 });
@@ -592,23 +695,114 @@ const reporte = async (req, res) => {
     doc.text(`Total Ventas: $${parseFloat(corte.totalVentas).toFixed(2)}`);
     doc.moveDown();
 
+    // Gastos del período
+    if (gastos && gastos.length > 0) {
+      doc.fontSize(14).text('Gastos del Período', { underline: true });
+      doc.moveDown(0.5);
+      
+      // Calcular totales de gastos
+      const totalGastos = gastos.reduce((sum, g) => sum + parseFloat(g.monto), 0);
+      const gastosEfectivo = gastos.filter(g => g.metodoPago === 'efectivo').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+      const gastosTarjeta = gastos.filter(g => g.metodoPago === 'tarjeta').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+      const gastosTransferencia = gastos.filter(g => g.metodoPago === 'transferencia').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+      
+      // Tabla de gastos
+      doc.fontSize(10);
+      let yPos = doc.y;
+      const startY = yPos;
+      const pageHeight = doc.page.height;
+      const margin = 50;
+      const rowHeight = 15;
+      
+      // Encabezados
+      doc.text('Fecha', margin, yPos);
+      doc.text('Motivo', margin + 60, yPos);
+      doc.text('Monto', margin + 200, yPos);
+      doc.text('Método', margin + 260, yPos);
+      doc.text('Banco', margin + 320, yPos);
+      yPos += rowHeight;
+      
+      // Línea separadora
+      doc.moveTo(margin, yPos).lineTo(550, yPos).stroke();
+      yPos += 5;
+      
+      // Gastos
+      gastos.forEach((gasto) => {
+        if (yPos > pageHeight - margin - rowHeight) {
+          doc.addPage();
+          yPos = margin;
+          // Reimprimir encabezados
+          doc.text('Fecha', margin, yPos);
+          doc.text('Motivo', margin + 60, yPos);
+          doc.text('Monto', margin + 200, yPos);
+          doc.text('Método', margin + 260, yPos);
+          doc.text('Banco', margin + 320, yPos);
+          yPos += rowHeight;
+          doc.moveTo(margin, yPos).lineTo(550, yPos).stroke();
+          yPos += 5;
+        }
+        
+        doc.text(moment(gasto.createdAt).format('DD/MM/YYYY'), margin, yPos);
+        doc.text(gasto.motivo.substring(0, 20), margin + 60, yPos);
+        doc.text(`$${parseFloat(gasto.monto).toFixed(2)}`, margin + 200, yPos);
+        doc.text(gasto.metodoPago, margin + 260, yPos);
+        doc.text(gasto.banco || '-', margin + 320, yPos);
+        yPos += rowHeight;
+      });
+      
+      doc.moveDown(2);
+      
+      // Resumen de gastos
+      doc.fontSize(12);
+      doc.text('Resumen de Gastos:', { underline: true });
+      if (!esCorteBancos) {
+        doc.text(`Total Efectivo: $${gastosEfectivo.toFixed(2)}`);
+      }
+      doc.text(`Total Tarjeta: $${gastosTarjeta.toFixed(2)}`);
+      if (gastosTarjeta > 0) {
+        const gastosTarjetaAzteca = gastos.filter(g => g.metodoPago === 'tarjeta' && g.banco === 'Azteca').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+        const gastosTarjetaBbva = gastos.filter(g => g.metodoPago === 'tarjeta' && g.banco === 'BBVA').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+        const gastosTarjetaMp = gastos.filter(g => g.metodoPago === 'tarjeta' && g.banco === 'Mercado Pago').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+        doc.text(`  - Azteca: $${gastosTarjetaAzteca.toFixed(2)}`, { indent: 20 });
+        doc.text(`  - BBVA: $${gastosTarjetaBbva.toFixed(2)}`, { indent: 20 });
+        doc.text(`  - Mercado Pago: $${gastosTarjetaMp.toFixed(2)}`, { indent: 20 });
+      }
+      doc.text(`Total Transferencia: $${gastosTransferencia.toFixed(2)}`);
+      if (gastosTransferencia > 0) {
+        const gastosTransAzteca = gastos.filter(g => g.metodoPago === 'transferencia' && g.banco === 'Azteca').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+        const gastosTransBbva = gastos.filter(g => g.metodoPago === 'transferencia' && g.banco === 'BBVA').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+        const gastosTransMp = gastos.filter(g => g.metodoPago === 'transferencia' && g.banco === 'Mercado Pago').reduce((sum, g) => sum + parseFloat(g.monto), 0);
+        doc.text(`  - Azteca: $${gastosTransAzteca.toFixed(2)}`, { indent: 20 });
+        doc.text(`  - BBVA: $${gastosTransBbva.toFixed(2)}`, { indent: 20 });
+        doc.text(`  - Mercado Pago: $${gastosTransMp.toFixed(2)}`, { indent: 20 });
+      }
+      doc.fontSize(14).text(`Total Gastos: $${totalGastos.toFixed(2)}`, { underline: true });
+      doc.moveDown();
+    }
+
     // Saldos finales
     doc.fontSize(14).text('Saldos Finales', { underline: true });
     doc.fontSize(12);
-    doc.text(`Efectivo: $${parseFloat(corte.saldoFinalEfectivo).toFixed(2)}`);
+    if (!esCorteBancos) {
+      doc.text(`Efectivo: $${parseFloat(corte.saldoFinalEfectivo).toFixed(2)}`);
+    }
     const saldoFinalTarjetaTotal = parseFloat(corte.saldoFinalTarjetaAzteca || 0) +
                                   parseFloat(corte.saldoFinalTarjetaBbva || 0) +
                                   parseFloat(corte.saldoFinalTarjetaMp || 0);
     doc.text(`Tarjeta: $${saldoFinalTarjetaTotal.toFixed(2)}`);
     doc.text(`Transferencia: $${parseFloat(corte.saldoFinalTransferencia).toFixed(2)}`);
-    doc.text(`Total: $${parseFloat(corte.saldoFinal).toFixed(2)}`);
+    // Para corte de bancos, el total solo incluye tarjeta + transferencia
+    const saldoFinalTotal = esCorteBancos ? (saldoFinalTarjetaTotal + parseFloat(corte.saldoFinalTransferencia || 0)) : parseFloat(corte.saldoFinal || 0);
+    doc.text(`Total: $${saldoFinalTotal.toFixed(2)}`);
     doc.moveDown();
 
-    // Diferencia
-    doc.fontSize(14).text(`Diferencia: $${parseFloat(corte.diferencia).toFixed(2)}`, {
-      underline: true,
-      color: parseFloat(corte.diferencia) < 0 ? 'red' : 'black',
-    });
+    // Diferencia (solo para cortes que no son de bancos)
+    if (!esCorteBancos) {
+      doc.fontSize(14).text(`Diferencia: $${parseFloat(corte.diferencia).toFixed(2)}`, {
+        underline: true,
+        color: parseFloat(corte.diferencia) < 0 ? 'red' : 'black',
+      });
+    }
 
     if (corte.observaciones) {
       doc.moveDown();

@@ -22,11 +22,25 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Método de Pago *</label>
-        <select name="metodoPago" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+        <select name="metodoPago" id="metodoPago" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
           <option value="efectivo">Efectivo</option>
           <option value="tarjeta">Tarjeta</option>
           <option value="transferencia">Transferencia</option>
         </select>
+      </div>
+
+      <div id="bancoContainer" style="display: none;">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Banco <span class="text-red-500">*</span>
+          <span class="text-xs text-gray-500 font-normal ml-2">(Requerido para este método de pago)</span>
+        </label>
+        <select name="banco" id="banco" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+          <option value="">-- Seleccione un banco --</option>
+          <option value="Azteca">Azteca</option>
+          <option value="BBVA">BBVA</option>
+          <option value="Mercado Pago">Mercado Pago</option>
+        </select>
+        <p id="bancoError" class="text-red-500 text-xs mt-1 hidden">Debe seleccionar un banco</p>
       </div>
 
       <div>
@@ -47,32 +61,112 @@
 </div>
 
 <script>
-document.getElementById('formGasto').addEventListener('submit', async (e) => {
-  e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+  var metodoPagoSelect = document.getElementById('metodoPago');
+  var bancoContainer = document.getElementById('bancoContainer');
+  var bancoSelect = document.getElementById('banco');
+  var bancoError = document.getElementById('bancoError');
+  var formGasto = document.getElementById('formGasto');
   
-  const formData = new FormData(e.target);
-  const data = Object.fromEntries(formData);
+  if (!metodoPagoSelect || !bancoContainer || !bancoSelect || !formGasto) {
+    console.error('Error: No se encontraron los elementos del formulario');
+    return;
+  }
   
-  try {
-    const response = await fetch('/gastos', {
+  function toggleBancoContainer() {
+    var metodoPago = metodoPagoSelect.value;
+    if (metodoPago === 'tarjeta' || metodoPago === 'transferencia') {
+      bancoContainer.style.display = 'block';
+      bancoSelect.setAttribute('required', 'required');
+      bancoSelect.classList.add('border-red-300');
+      if (bancoError) bancoError.classList.add('hidden');
+    } else {
+      bancoContainer.style.display = 'none';
+      bancoSelect.removeAttribute('required');
+      bancoSelect.value = '';
+      bancoSelect.classList.remove('border-red-300', 'border-red-500');
+      if (bancoError) bancoError.classList.add('hidden');
+    }
+  }
+  
+  metodoPagoSelect.addEventListener('change', toggleBancoContainer);
+  toggleBancoContainer();
+  
+  formGasto.addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Formulario enviado');
+    
+    var metodoPago = metodoPagoSelect.value;
+    var banco = bancoSelect.value;
+    
+    if ((metodoPago === 'tarjeta' || metodoPago === 'transferencia') && !banco) {
+      bancoSelect.classList.add('border-red-500');
+      bancoSelect.focus();
+      if (bancoError) bancoError.classList.remove('hidden');
+      bancoContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      alert('Debe seleccionar un banco para este método de pago.');
+      return false;
+    }
+    
+    bancoSelect.classList.remove('border-red-500', 'border-red-300');
+    if (bancoError) bancoError.classList.add('hidden');
+    
+    var formData = new FormData(formGasto);
+    var data = {};
+    formData.forEach(function(value, key) {
+      data[key] = value;
+    });
+    
+    if (metodoPago === 'efectivo') {
+      delete data.banco;
+    }
+    
+    var submitButton = formGasto.querySelector('button[type="submit"]');
+    var originalText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Guardando...';
+    
+    fetch('/gastos', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+    })
+    .then(function(response) {
+      console.log('Respuesta recibida:', response.status);
+      if (!response.ok) {
+        return response.json().then(function(errorData) {
+          var err = { message: errorData.error || 'Error HTTP: ' + response.status };
+          return Promise.reject(err);
+        }).catch(function() {
+          var err = { message: 'Error HTTP: ' + response.status };
+          return Promise.reject(err);
+        });
+      }
+      return response.json();
+    })
+    .then(function(result) {
+      console.log('Resultado:', result);
+      if (result.success) {
+        window.location.href = '/gastos?success=Gasto registrado correctamente';
+      } else {
+        alert('Error: ' + (result.error || 'Error al registrar el gasto'));
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+      }
+    })
+    .catch(function(error) {
+      console.error('Error al registrar el gasto:', error);
+      alert('Error al registrar el gasto: ' + (error.message || 'Error desconocido'));
+      submitButton.disabled = false;
+      submitButton.innerHTML = originalText;
     });
     
-    const result = await response.json();
-    
-    if (result.success) {
-      window.location.href = '/gastos?success=Gasto registrado correctamente';
-    } else {
-      alert(result.error || 'Error al registrar el gasto');
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Error al registrar el gasto');
-  }
+    return false;
+  });
 });
 </script>
 ` }) %>

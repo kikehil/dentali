@@ -18,10 +18,39 @@ model Usuario {
   doctor    Doctor?  @relation(fields: [doctorId], references: [id])
   cortesCaja CorteCaja[]
   gastos    Gasto[]
+  permisos  PermisoUsuario[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("usuarios")
+}
+
+model Modulo {
+  id          Int              @id @default(autoincrement())
+  nombre      String           @unique
+  descripcion String?
+  ruta        String?          // Ruta base del módulo (ej: /pos, /pacientes)
+  icono       String?          // Nombre del icono FontAwesome
+  activo      Boolean          @default(true)
+  permisos    PermisoUsuario[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("modulos")
+}
+
+model PermisoUsuario {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  moduloId  Int
+  modulo    Modulo   @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  acceso    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([usuarioId, moduloId])
+  @@map("permisos_usuarios")
 }
 
 model Doctor {
@@ -160,13 +189,27 @@ model ArchivoPaciente {
   @@map("archivos_pacientes")
 }
 
+model Categoria {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @unique
+  descripcion String?    @db.Text
+  color       String?    // Color para identificar la categoría
+  activo      Boolean    @default(true)
+  servicios   Servicio[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("categorias")
+}
+
 model Servicio {
   id          Int         @id @default(autoincrement())
   nombre      String
   descripcion String?     @db.Text
   precio      Decimal     @db.Decimal(10, 2)
   duracion    Int         @default(30) // minutos
-  categoria   String?
+  categoriaId Int?
+  categoria   Categoria?  @relation(fields: [categoriaId], references: [id])
   activo      Boolean     @default(true)
   items       VentaItem[]
   createdAt   DateTime    @default(now())
@@ -260,6 +303,9 @@ model CorteCaja {
   saldoFinalTarjetaBbva     Decimal   @default(0) @db.Decimal(10, 2)
   saldoFinalTarjetaMp       Decimal   @default(0) @db.Decimal(10, 2)
   saldoFinalTransferencia   Decimal   @default(0) @db.Decimal(10, 2)
+  saldoFinalTransferenciaAzteca  Decimal   @default(0) @db.Decimal(10, 2)
+  saldoFinalTransferenciaBbva    Decimal   @default(0) @db.Decimal(10, 2)
+  saldoFinalTransferenciaMp      Decimal   @default(0) @db.Decimal(10, 2)
   diferencia                Decimal   @default(0) @db.Decimal(10, 2)
   observaciones             String?   @db.Text
   usuarioId                 Int?
@@ -296,6 +342,7 @@ model Gasto {
   motivo        String
   monto         Decimal  @db.Decimal(10, 2)
   metodoPago    String   @default("efectivo") // efectivo, tarjeta, transferencia
+  banco         String?  // Azteca, BBVA, Mercado Pago (solo para tarjeta o transferencia)
   observaciones String?  @db.Text
   usuarioId     Int?
   usuario       Usuario? @relation(fields: [usuarioId], references: [id])

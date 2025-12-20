@@ -15,46 +15,65 @@
   <!-- Navegación -->
   <nav class="p-4 pb-24 overflow-y-auto" style="max-height: calc(100vh - 180px);">
     <ul class="space-y-2">
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/pos'))) { %>
       <li>
         <a href="/pos" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-700 transition <%= currentPath === '/pos' ? 'bg-primary-700' : '' %>">
           <i class="fas fa-cash-register w-5"></i>
           <span>Punto de Venta</span>
         </a>
       </li>
+      <% } %>
+      
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/pacientes'))) { %>
       <li>
         <a href="/pacientes" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-700 transition <%= currentPath.startsWith('/pacientes') ? 'bg-primary-700' : '' %>">
           <i class="fas fa-users w-5"></i>
           <span>Pacientes</span>
         </a>
       </li>
+      <% } %>
+      
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/doctores'))) { %>
       <li>
         <a href="/doctores" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-700 transition <%= currentPath.startsWith('/doctores') ? 'bg-primary-700' : '' %>">
           <i class="fas fa-user-md w-5"></i>
           <span>Doctores</span>
         </a>
       </li>
+      <% } %>
       
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/pos/ventas') || hasModuleAccess('/cortes') || hasModuleAccess('/gastos'))) { %>
       <li class="pt-4 border-t border-primary-700 mt-4">
         <span class="px-4 text-xs text-primary-400 uppercase tracking-wider">Ventas</span>
       </li>
+      <% } %>
+      
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/pos/ventas'))) { %>
       <li>
         <a href="/pos/ventas" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-700 transition <%= currentPath === '/pos/ventas' ? 'bg-primary-700' : '' %>">
           <i class="fas fa-receipt w-5"></i>
           <span>Historial Ventas</span>
         </a>
       </li>
+      <% } %>
+      
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/cortes'))) { %>
       <li>
         <a href="/cortes" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-700 transition <%= currentPath.startsWith('/cortes') ? 'bg-primary-700' : '' %>">
           <i class="fas fa-cut w-5"></i>
           <span>Cortes de Caja</span>
         </a>
       </li>
+      <% } %>
+      
+      <% if (user && (user.rol === 'admin' || hasModuleAccess('/gastos'))) { %>
       <li>
         <a href="/gastos" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary-700 transition <%= currentPath.startsWith('/gastos') ? 'bg-primary-700' : '' %>">
           <i class="fas fa-money-bill-wave w-5"></i>
           <span>Gastos</span>
         </a>
       </li>
+      <% } %>
       
       <% if (user && user.rol === 'admin') { %>
       <li class="pt-4 border-t border-primary-700 mt-4">

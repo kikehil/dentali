@@ -11,3 +11,15 @@ ALTER TABLE `ventas`
   FOREIGN KEY (`doctorId`) REFERENCES `doctores`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 
+
+
+
+
+
+
+
+
+
+
+
+

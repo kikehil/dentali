@@ -111,7 +111,7 @@ document.getElementById('formProducto').addEventListener('submit', function(e) {
   const data = Object.fromEntries(formData);
   data.activo = document.getElementById('productoActivo').checked ? 'true' : 'false';
   
-  fetch('/pos/productos', {
+  fetch('/configuracion/productos', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
@@ -121,8 +121,12 @@ document.getElementById('formProducto').addEventListener('submit', function(e) {
     if (result.success) {
       location.reload();
     } else {
-      alert('Error al guardar');
+      alert('Error al guardar: ' + (result.error || 'Error desconocido'));
     }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error al guardar el producto. Por favor, verifica la consola para más detalles.');
   });
 });
 </script>

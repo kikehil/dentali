@@ -15,7 +15,7 @@
     <div class="flex-1 ml-64">
       <%- include('partials/header') %>
       
-      <main class="px-6 pb-6">
+      <main class="px-6 pb-6 pt-4">
         <%- body %>
       </main>
     </div>
@@ -23,6 +23,92 @@
 
   <script src="/js/main.js"></script>
   <script>
+    // Funciones para saldos en tiempo real - Hacerlas globales
+    window.intervaloActualizacionSaldos = null;
+    
+    window.formatearMoneda = function(monto) {
+      return '$' + parseFloat(monto || 0).toFixed(2);
+    };
+    
+    window.actualizarSaldos = function() {
+      const currentPath = window.location.pathname;
+      if (!currentPath.startsWith('/pos')) {
+        return;
+      }
+      
+      fetch('/pos/saldos')
+        .then(function(response) { 
+          if (!response.ok) {
+            throw new Error('Error en la respuesta: ' + response.status);
+          }
+          return response.json(); 
+        })
+        .then(function(result) {
+          console.log('Respuesta de saldos:', result);
+          if (result.success && result.saldos) {
+            const saldos = result.saldos;
+            const saldoEfectivo = document.getElementById('saldoEfectivo');
+            const saldoBbva = document.getElementById('saldoBbva');
+            const saldoAzteca = document.getElementById('saldoAzteca');
+            const saldoMercadoPago = document.getElementById('saldoMercadoPago');
+            
+            console.log('Actualizando saldos en DOM:', saldos);
+            
+            if (saldoEfectivo) {
+              saldoEfectivo.textContent = window.formatearMoneda(saldos.efectivo);
+              console.log('Saldo efectivo actualizado:', saldos.efectivo);
+            } else {
+              console.warn('Elemento saldoEfectivo no encontrado');
+            }
+            if (saldoBbva) {
+              saldoBbva.textContent = window.formatearMoneda(saldos.bbva);
+              console.log('Saldo BBVA actualizado:', saldos.bbva);
+            } else {
+              console.warn('Elemento saldoBbva no encontrado');
+            }
+            if (saldoAzteca) {
+              saldoAzteca.textContent = window.formatearMoneda(saldos.azteca);
+              console.log('Saldo Azteca actualizado:', saldos.azteca);
+            } else {
+              console.warn('Elemento saldoAzteca no encontrado');
+            }
+            if (saldoMercadoPago) {
+              saldoMercadoPago.textContent = window.formatearMoneda(saldos.mercadoPago);
+              console.log('Saldo Mercado Pago actualizado:', saldos.mercadoPago);
+            } else {
+              console.warn('Elemento saldoMercadoPago no encontrado');
+            }
+          } else {
+            console.error('Error en respuesta de saldos:', result);
+          }
+        })
+        .catch(function(error) {
+          console.error('Error al actualizar saldos:', error);
+        });
+    };
+    
+    // Cargar saldos al inicio y actualizar cada 5 segundos si estamos en POS
+    document.addEventListener('DOMContentLoaded', function() {
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/pos')) {
+        // Esperar un poco para asegurar que el DOM esté completamente cargado
+        setTimeout(function() {
+          if (window.actualizarSaldos) {
+            window.actualizarSaldos();
+            // Actualizar cada 5 segundos
+            window.intervaloActualizacionSaldos = setInterval(window.actualizarSaldos, 5000);
+          }
+        }, 500);
+      }
+    });
+    
+    // Limpiar intervalo al salir de POS
+    window.addEventListener('beforeunload', function() {
+      if (window.intervaloActualizacionSaldos) {
+        clearInterval(window.intervaloActualizacionSaldos);
+      }
+    });
+    
     // Funciones globales para corte de caja
     function abrirModalCorteManual() {
       var modal = document.createElement('div');
@@ -32,13 +118,74 @@
         '<div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">' +
           '<div class="p-6 border-b">' +
             '<h3 class="text-2xl font-bold text-gray-800 flex items-center gap-3">' +
+              '<i class="fas fa-cut text-primary-500"></i>' +
+              'Tipo de Corte' +
+            '</h3>' +
+            '<p class="text-gray-600 mt-2">Selecciona el tipo de corte que deseas realizar</p>' +
+          '</div>' +
+          '<div class="p-6">' +
+            '<div class="space-y-3">' +
+              '<button onclick="seleccionarTipoCorte(\'efectivo\')" ' +
+                      'class="w-full bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-400 text-green-700 py-4 px-6 rounded-lg transition flex items-center justify-between font-medium">' +
+                '<div class="flex items-center gap-3">' +
+                  '<i class="fas fa-money-bill-wave text-2xl"></i>' +
+                  '<div class="text-left">' +
+                    '<p class="font-bold text-lg">Efectivo</p>' +
+                    '<p class="text-sm text-gray-600">Corte solo de efectivo</p>' +
+                  '</div>' +
+                '</div>' +
+                '<i class="fas fa-chevron-right"></i>' +
+              '</button>' +
+              '<button onclick="seleccionarTipoCorte(\'bancos\')" ' +
+                      'class="w-full bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-400 text-blue-700 py-4 px-6 rounded-lg transition flex items-center justify-between font-medium">' +
+                '<div class="flex items-center gap-3">' +
+                  '<i class="fas fa-university text-2xl"></i>' +
+                  '<div class="text-left">' +
+                    '<p class="font-bold text-lg">Bancos</p>' +
+                    '<p class="text-sm text-gray-600">Corte de tarjetas y transferencias</p>' +
+                  '</div>' +
+                '</div>' +
+                '<i class="fas fa-chevron-right"></i>' +
+              '</button>' +
+            '</div>' +
+            '<div class="mt-6">' +
+              '<button type="button" onclick="cerrarModalCorteManual()" ' +
+                      'class="w-full bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium">' +
+                'Cancelar' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      
+      document.body.appendChild(modal);
+      
+      // Cerrar al hacer clic fuera
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) cerrarModalCorteManual();
+      });
+    }
+
+    function seleccionarTipoCorte(tipo) {
+      cerrarModalCorteManual();
+      // Abrir modal de verificación de contraseña
+      abrirModalVerificacionAdmin(tipo);
+    }
+
+    function abrirModalVerificacionAdmin(tipoCorte) {
+      var modal = document.createElement('div');
+      modal.id = 'modalVerificacionAdmin';
+      modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      modal.innerHTML = 
+        '<div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">' +
+          '<div class="p-6 border-b">' +
+            '<h3 class="text-2xl font-bold text-gray-800 flex items-center gap-3">' +
               '<i class="fas fa-shield-alt text-red-500"></i>' +
               'Verificación Requerida' +
             '</h3>' +
-            '<p class="text-gray-600 mt-2">Ingresa la contraseña del administrador para realizar un corte de caja</p>' +
+            '<p class="text-gray-600 mt-2">Ingresa la contraseña del administrador para realizar el corte de ' + (tipoCorte === 'efectivo' ? 'efectivo' : 'bancos') + '</p>' +
           '</div>' +
           '<div class="p-6">' +
-            '<form id="formVerificarAdmin" onsubmit="verificarAdmin(event)">' +
+            '<form id="formVerificarAdmin" onsubmit="verificarAdmin(event, \'' + tipoCorte + '\')">' +
               '<div class="mb-4">' +
                 '<label class="block text-sm font-medium text-gray-700 mb-2">Contraseña de Administrador</label>' +
                 '<input type="password" id="passwordAdmin" required ' +
@@ -47,7 +194,7 @@
                 '<p id="errorPassword" class="text-red-500 text-sm mt-1 hidden"></p>' +
               '</div>' +
               '<div class="flex gap-4">' +
-                '<button type="button" onclick="cerrarModalCorteManual()" ' +
+                '<button type="button" onclick="cerrarModalVerificacionAdmin()" ' +
                         'class="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium">' +
                   'Cancelar' +
                 '</button>' +
@@ -64,8 +211,13 @@
       
       // Cerrar al hacer clic fuera
       modal.addEventListener('click', function(e) {
-        if (e.target === modal) cerrarModalCorteManual();
+        if (e.target === modal) cerrarModalVerificacionAdmin();
       });
+    }
+
+    function cerrarModalVerificacionAdmin() {
+      var modal = document.getElementById('modalVerificacionAdmin');
+      if (modal) modal.remove();
     }
 
     function cerrarModalCorteManual() {
@@ -73,7 +225,7 @@
       if (modal) modal.remove();
     }
 
-    function verificarAdmin(event) {
+    function verificarAdmin(event, tipoCorte) {
       event.preventDefault();
       const password = document.getElementById('passwordAdmin').value;
       const errorElement = document.getElementById('errorPassword');
@@ -97,9 +249,13 @@
       .then(function(response) { return response.json(); })
       .then(function(result) {
         if (result.success) {
-          cerrarModalCorteManual();
-          // Redirigir a la vista de corte manual
-          window.location.href = '/pos/corte-manual';
+          cerrarModalVerificacionAdmin();
+          // Redirigir según el tipo de corte
+          if (tipoCorte === 'efectivo') {
+            window.location.href = '/pos/corte-efectivo';
+          } else if (tipoCorte === 'bancos') {
+            window.location.href = '/pos/corte-bancos';
+          }
         } else {
           errorElement.textContent = result.error || 'Contraseña incorrecta';
           errorElement.classList.remove('hidden');

@@ -35,13 +35,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Configurar sesiones
+// secure: false para HTTP, cambiar a true cuando tengas HTTPS configurado
+const useSecureCookies = process.env.USE_SECURE_COOKIES === 'true';
+
 app.use(session({
   secret: config.sessionSecret,
-  resave: false,
+  resave: true, // Cambiar a true para asegurar que se guarde
   saveUninitialized: false,
   proxy: true,
   cookie: {
-    secure: config.nodeEnv === 'production',
+    secure: useSecureCookies, // false para HTTP, true para HTTPS
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000, // 24 horas
@@ -57,6 +60,19 @@ app.use((req, res, next) => {
   // Función helper para obtener hora actual en zona horaria correcta
   // Convierte explícitamente la hora del servidor a la zona horaria configurada
   res.locals.now = () => moment.tz(new Date(), config.timezone);
+  
+  // Función helper para verificar si el usuario tiene acceso a un módulo
+  res.locals.hasModuleAccess = function(ruta) {
+    if (!req.session || !req.session.user) return false;
+    // Los administradores tienen acceso a todo
+    if (req.session.user.rol === 'admin') return true;
+    // Verificar permisos
+    if (!req.session.user.permisos || !Array.isArray(req.session.user.permisos)) return false;
+    return req.session.user.permisos.some(
+      permiso => permiso && permiso.ruta && ruta.startsWith(permiso.ruta)
+    );
+  };
+  
   next();
 });
 

@@ -48,6 +48,76 @@
       </div>
     </div>
 
+    <!-- Desglose detallado por método y banco -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">Desglose por Método de Pago y Banco</h2>
+      
+      <div class="grid md:grid-cols-3 gap-6">
+        <!-- Efectivo -->
+        <div class="border rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-green-700 mb-3 flex items-center">
+            <i class="fas fa-money-bill-wave mr-2"></i>Efectivo
+          </h3>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center py-2 border-b">
+              <span class="text-gray-600">Total</span>
+              <span class="text-lg font-bold text-green-600">${formatCurrency(totalPorMetodoYBanco.efectivo.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta -->
+        <div class="border rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-blue-700 mb-3 flex items-center">
+            <i class="fas fa-credit-card mr-2"></i>Tarjeta
+          </h3>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center py-1">
+              <span class="text-sm text-gray-600">Azteca</span>
+              <span class="text-sm font-semibold text-gray-800">${formatCurrency(totalPorMetodoYBanco.tarjeta.desglose['Azteca'] || 0)}</span>
+            </div>
+            <div class="flex justify-between items-center py-1">
+              <span class="text-sm text-gray-600">BBVA</span>
+              <span class="text-sm font-semibold text-gray-800">${formatCurrency(totalPorMetodoYBanco.tarjeta.desglose['BBVA'] || 0)}</span>
+            </div>
+            <div class="flex justify-between items-center py-1">
+              <span class="text-sm text-gray-600">Mercado Pago</span>
+              <span class="text-sm font-semibold text-gray-800">${formatCurrency(totalPorMetodoYBanco.tarjeta.desglose['Mercado Pago'] || 0)}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-t mt-2 pt-2">
+              <span class="font-semibold text-gray-700">Total</span>
+              <span class="text-lg font-bold text-blue-600">${formatCurrency(totalPorMetodoYBanco.tarjeta.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transferencia -->
+        <div class="border rounded-lg p-4">
+          <h3 class="text-lg font-semibold text-purple-700 mb-3 flex items-center">
+            <i class="fas fa-exchange-alt mr-2"></i>Transferencia
+          </h3>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center py-1">
+              <span class="text-sm text-gray-600">Azteca</span>
+              <span class="text-sm font-semibold text-gray-800">${formatCurrency(totalPorMetodoYBanco.transferencia.desglose['Azteca'] || 0)}</span>
+            </div>
+            <div class="flex justify-between items-center py-1">
+              <span class="text-sm text-gray-600">BBVA</span>
+              <span class="text-sm font-semibold text-gray-800">${formatCurrency(totalPorMetodoYBanco.transferencia.desglose['BBVA'] || 0)}</span>
+            </div>
+            <div class="flex justify-between items-center py-1">
+              <span class="text-sm text-gray-600">Mercado Pago</span>
+              <span class="text-sm font-semibold text-gray-800">${formatCurrency(totalPorMetodoYBanco.transferencia.desglose['Mercado Pago'] || 0)}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-t mt-2 pt-2">
+              <span class="font-semibold text-gray-700">Total</span>
+              <span class="text-lg font-bold text-purple-600">${formatCurrency(totalPorMetodoYBanco.transferencia.total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead class="bg-gray-50">
@@ -56,6 +126,7 @@
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motivo</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Método de Pago</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Banco</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
           </tr>
@@ -66,11 +137,18 @@
               '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">' + moment(gasto.createdAt).format('DD/MM/YYYY HH:mm') + '</td>' +
               '<td class="px-4 py-3 text-sm text-gray-900">' + gasto.motivo + '</td>' +
               '<td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-red-600">' + formatCurrency(parseFloat(gasto.monto)) + '</td>' +
-              '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 capitalize">' + gasto.metodoPago + '</td>' +
+              '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 capitalize">' + gasto.metodoPago + 
+                (gasto.metodoPago === 'tarjeta' || gasto.metodoPago === 'transferencia' ? 
+                  (gasto.banco ? ' <span class="text-xs text-gray-400">(' + gasto.banco + ')</span>' : '') : '') + 
+              '</td>' +
+              '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">' + 
+                (gasto.banco ? '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">' + gasto.banco + '</span>' : 
+                 (gasto.metodoPago === 'tarjeta' || gasto.metodoPago === 'transferencia' ? '<span class="text-red-500 text-xs">Sin banco</span>' : '-')) + 
+              '</td>' +
               '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">' + (gasto.usuario ? gasto.usuario.nombre : 'N/A') + '</td>' +
               '<td class="px-4 py-3 text-sm text-gray-500">' + (gasto.observaciones || '-') + '</td>' +
             '</tr>'
-          ).join('') : '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No se encontraron gastos para el período seleccionado</td></tr>'}
+          ).join('') : '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No se encontraron gastos para el período seleccionado</td></tr>'}
         </tbody>
       </table>
     </div>

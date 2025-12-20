@@ -52,23 +52,26 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<div class="grid lg:grid-cols-3 gap-4 h-[calc(100vh-140px)]">
+<div class="grid lg:grid-cols-3 gap-4 h-full min-h-0">
   <!-- Catálogo -->
   <div class="lg:col-span-2 flex flex-col h-full">
     <!-- Tabs y Selector de Moneda -->
-    <div class="bg-white rounded-xl shadow-sm p-3 mb-3">
+    <div class="bg-white rounded-lg shadow-sm p-3 mb-3 flex-shrink-0">
       <div class="flex justify-between items-center">
-        <div class="flex gap-4 border-b flex-1">
-          <button onclick="mostrarTab('servicios')" id="tabServicios" class="px-4 py-2 border-b-2 border-primary-500 text-primary-600 font-medium text-sm">
+        <div class="flex gap-4 border-b border-gray-200 flex-1">
+          <button onclick="mostrarTab('servicios')" id="tabServicios" class="px-4 py-2 border-b-2 border-primary-500 text-primary-600 font-medium text-sm transition">
             <i class="fas fa-teeth mr-2"></i> Servicios
           </button>
-          <button onclick="mostrarTab('productos')" id="tabProductos" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm">
+          <button onclick="mostrarTab('categoria')" id="tabCategoria" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm transition">
+            <i class="fas fa-tags mr-2"></i> Por Categoría
+          </button>
+          <button onclick="mostrarTab('productos')" id="tabProductos" class="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm transition">
             <i class="fas fa-box mr-2"></i> Productos
           </button>
         </div>
         <div class="ml-4 flex items-center gap-2">
           <label class="text-xs font-medium text-gray-700">Moneda:</label>
-          <select id="selectorMoneda" onchange="cambiarMoneda()" class="px-3 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+          <select id="selectorMoneda" onchange="cambiarMoneda()" class="px-3 py-1.5 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
             <option value="MXN">MXN</option>
             <option value="USD">USD</option>
           </select>
@@ -76,96 +79,126 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
 
-    <!-- Servicios -->
-    <div id="listaServicios" class="grid md:grid-cols-2 lg:grid-cols-3 gap-2 overflow-y-auto flex-1 pb-2">
-      ` + servicios.map(function(s) {
-        return '<div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition cursor-pointer" data-tipo="servicio" data-id="' + s.id + '" data-nombre="' + s.nombre + '" data-precio="' + s.precio + '">' +
-          '<div class="flex justify-between items-start">' +
-            '<div class="flex-1 min-w-0">' +
-              '<h4 class="text-sm font-medium text-gray-800 truncate">' + s.nombre + '</h4>' +
-              '<p class="text-xs text-gray-500">' + (s.categoria || 'General') + ' - ' + s.duracion + ' min</p>' +
+    <!-- Contenedor con scroll para Servicios -->
+    <div id="contenedorServicios" class="flex-1 min-h-0 bg-white rounded-lg shadow-sm p-1.5">
+      <div id="listaServicios" class="overflow-y-auto" style="max-height: calc(100vh - 300px); height: 100%;">
+        <div class="grid grid-cols-3 gap-1.5 auto-rows-max">
+        ` + servicios.map(function(s) {
+          const categoriaNombre = (s.categoria && s.categoria.nombre) ? s.categoria.nombre : 'General';
+          return '<div class="bg-white rounded border border-gray-200 p-2 hover:bg-blue-50 hover:border-blue-300 hover:shadow transition-all duration-200 cursor-pointer w-full" data-tipo="servicio" data-id="' + s.id + '" data-nombre="' + s.nombre + '" data-precio="' + s.precio + '" data-categoria-id="' + (s.categoriaId || '') + '" title="' + s.nombre + ' - ' + formatCurrency(s.precio) + '">' +
+            '<div class="flex flex-col">' +
+              '<h4 class="text-xs font-semibold text-gray-800 mb-0.5 line-clamp-2 leading-tight">' + s.nombre + '</h4>' +
+              '<p class="text-xs text-gray-500 mb-1 leading-tight">' + categoriaNombre + ' • ' + s.duracion + ' min</p>' +
+              '<p class="text-xs font-bold text-blue-600">' + formatCurrency(s.precio) + '</p>' +
             '</div>' +
-            '<p class="text-sm font-bold text-primary-600 ml-2">' + formatCurrency(s.precio) + '</p>' +
-          '</div>' +
-        '</div>';
-      }).join('') + `
+          '</div>';
+        }).join('') + `
+        </div>
+      </div>
     </div>
 
-    <!-- Productos -->
-    <div id="listaProductos" class="grid md:grid-cols-2 lg:grid-cols-3 gap-2 overflow-y-auto flex-1 pb-2 hidden">
-      ` + productos.map(function(p) {
-        return '<div class="bg-white rounded-lg shadow-sm p-3 hover:shadow-md transition cursor-pointer ' + (p.stock <= 0 ? 'opacity-50' : '') + '" data-tipo="producto" data-id="' + p.id + '" data-nombre="' + p.nombre + '" data-precio="' + p.precio + '" data-stock="' + p.stock + '">' +
-          '<div class="flex justify-between items-start">' +
-            '<div class="flex-1 min-w-0">' +
-              '<h4 class="text-sm font-medium text-gray-800 truncate">' + p.nombre + '</h4>' +
-              '<p class="text-xs text-gray-500">Stock: ' + p.stock + '</p>' +
+    <!-- Contenedor con scroll para Por Categoría -->
+    <div id="contenedorCategoria" class="flex-1 min-h-0 bg-white rounded-lg shadow-sm p-1.5 hidden">
+      <div class="mb-3 flex-shrink-0">
+        <label class="block text-xs font-medium text-gray-700 mb-1.5">Filtrar por Categoría</label>
+          <select id="filtroCategoria" onchange="filtrarPorCategoria()" class="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+          <option value="">-- Todas las categorías --</option>
+          ` + (categorias && categorias.length > 0 ? categorias.map(function(c) { 
+            return '<option value="' + c.id + '">' + c.nombre + '</option>'; 
+          }).join('') : '') + `
+        </select>
+      </div>
+      <div id="listaServiciosCategoria" class="overflow-y-auto" style="max-height: calc(100vh - 350px); height: 100%;">
+        <div class="grid grid-cols-3 gap-1.5 auto-rows-max">
+        ` + servicios.map(function(s) {
+          const categoriaNombre = (s.categoria && s.categoria.nombre) ? s.categoria.nombre : 'General';
+          return '<div class="bg-white rounded border border-gray-200 p-2 hover:bg-blue-50 hover:border-blue-300 hover:shadow transition-all duration-200 cursor-pointer w-full servicio-item" data-tipo="servicio" data-id="' + s.id + '" data-nombre="' + s.nombre + '" data-precio="' + s.precio + '" data-categoria-id="' + (s.categoriaId || '') + '" title="' + s.nombre + ' - ' + formatCurrency(s.precio) + '">' +
+            '<div class="flex flex-col">' +
+              '<h4 class="text-xs font-semibold text-gray-800 mb-0.5 line-clamp-2 leading-tight">' + s.nombre + '</h4>' +
+              '<p class="text-xs text-gray-500 mb-1 leading-tight">' + categoriaNombre + ' • ' + s.duracion + ' min</p>' +
+              '<p class="text-xs font-bold text-blue-600">' + formatCurrency(s.precio) + '</p>' +
             '</div>' +
-            '<p class="text-sm font-bold text-secondary-600 ml-2">' + formatCurrency(p.precio) + '</p>' +
-          '</div>' +
-        '</div>';
-      }).join('') + `
+          '</div>';
+        }).join('') + `
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor con scroll para Productos -->
+    <div id="contenedorProductos" class="flex-1 min-h-0 bg-white rounded-lg shadow-sm p-1.5 hidden">
+      <div id="listaProductos" class="overflow-y-auto" style="max-height: calc(100vh - 300px); height: 100%;">
+        <div class="grid grid-cols-3 gap-1.5 auto-rows-max">
+        ` + productos.map(function(p) {
+          return '<div class="bg-white rounded border border-gray-200 p-2 hover:bg-blue-50 hover:border-blue-300 hover:shadow transition-all duration-200 cursor-pointer w-full ' + (p.stock <= 0 ? 'opacity-50' : '') + '" data-tipo="producto" data-id="' + p.id + '" data-nombre="' + p.nombre + '" data-precio="' + p.precio + '" data-stock="' + p.stock + '" title="' + p.nombre + ' - Stock: ' + p.stock + ' - ' + formatCurrency(p.precio) + '">' +
+            '<div class="flex flex-col">' +
+              '<h4 class="text-xs font-semibold text-gray-800 mb-0.5 line-clamp-2 leading-tight">' + p.nombre + '</h4>' +
+              '<p class="text-xs text-gray-500 mb-1 leading-tight">Stock: <span class="font-medium ' + (p.stock <= p.stockMinimo ? 'text-red-600' : 'text-green-600') + '">' + p.stock + '</span></p>' +
+              '<p class="text-xs font-bold text-blue-600">' + formatCurrency(p.precio) + '</p>' +
+            '</div>' +
+          '</div>';
+        }).join('') + `
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- Carrito -->
   <div class="lg:col-span-1 flex flex-col h-full">
-    <div class="bg-gradient-to-br from-primary-50 via-secondary-50 to-primary-100 rounded-xl shadow-lg border-2 border-primary-200 p-4 flex flex-col h-full">
-      <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center">
-        <div class="bg-gradient-to-r from-primary-500 to-secondary-500 p-1.5 rounded-lg mr-2">
-          <i class="fas fa-shopping-cart text-white text-sm"></i>
-        </div>
+    <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex flex-col h-full">
+      <h3 class="text-base font-bold text-gray-800 mb-4 flex items-center flex-shrink-0">
+        <i class="fas fa-shopping-cart text-blue-600 mr-2"></i>
         Carrito
       </h3>
 
-      <div class="mb-3">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Doctor (opcional)</label>
-        <select id="doctorVenta" class="w-full px-2 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+      <div class="mb-3 flex-shrink-0">
+        <label class="block text-xs font-medium text-gray-700 mb-1.5">Doctor (opcional)</label>
+        <select id="doctorVenta" class="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           <option value="">Seleccionar doctor</option>
           ` + (doctores ? doctores.map(function(d) { return '<option value="' + d.id + '">Dr. ' + d.nombre + ' ' + d.apellido + '</option>'; }).join('') : '') + `
         </select>
       </div>
 
-      <div class="mb-3">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Paciente (opcional)</label>
-        <select id="pacienteVenta" class="w-full px-2 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-xs focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+      <div class="mb-3 flex-shrink-0">
+        <label class="block text-xs font-medium text-gray-700 mb-1.5">Paciente (opcional)</label>
+        <select id="pacienteVenta" class="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           <option value="">Cliente general</option>
           ` + pacientes.map(function(p) { return '<option value="' + p.id + '">' + p.nombre + ' ' + p.apellido + '</option>'; }).join('') + `
         </select>
       </div>
 
-      <div id="itemsCarrito" class="flex-1 space-y-1.5 overflow-y-auto bg-white bg-opacity-60 rounded-lg p-2 border border-primary-200 mb-3 min-h-0">
-        <p class="text-gray-500 text-center py-4 text-sm">Carrito vacío</p>
+      <div id="itemsCarrito" class="overflow-y-auto bg-gray-50 rounded-lg p-3 border border-gray-200 mb-3" style="max-height: calc(100vh - 500px); height: 100%;">
+        <p class="text-gray-500 text-center py-8 text-sm">Carrito vacío</p>
       </div>
 
-      <div class="border-t-2 border-primary-200 pt-3 space-y-1.5 bg-white bg-opacity-50 rounded-lg p-2 -mx-2 px-2 mb-3">
-        <div class="flex justify-between items-center text-xs mb-1">
+      <div class="border-t border-gray-200 pt-3 space-y-2 mb-3 flex-shrink-0">
+        <div class="flex justify-between items-center text-xs">
           <span class="text-gray-500">Moneda:</span>
           <span id="monedaCarrito" class="font-medium text-gray-700">MXN</span>
         </div>
-        <div class="flex justify-between text-gray-600 text-sm">
+        <div class="flex justify-between text-sm text-gray-700">
           <span>Subtotal:</span>
           <span id="subtotal" class="font-medium">$0.00 MXN</span>
         </div>
-        <div class="flex justify-between items-center text-sm">
-          <span class="text-gray-600">Descuento:</span>
-          <input type="number" id="descuento" value="0" min="0" step="0.01" class="w-20 px-2 py-1 border rounded text-right text-xs" onchange="actualizarTotales()">
+        <div class="flex justify-between items-center text-sm text-gray-700">
+          <span>Descuento:</span>
+          <input type="number" id="descuento" value="0" min="0" step="0.01" class="w-24 px-2 py-1 border border-gray-300 rounded text-right text-sm" onchange="actualizarTotales()">
         </div>
-        <div class="flex justify-between text-lg font-bold text-gray-800">
+        <div class="flex justify-between text-lg font-bold text-gray-800 pt-1 border-t border-gray-200">
           <span>Total:</span>
           <span id="total">$0.00 MXN</span>
         </div>
       </div>
 
-      <div class="mb-3">
-        <label class="block text-xs font-medium text-gray-700 mb-1">Método de pago</label>
-        <select id="metodoPago" onchange="mostrarBancos()" class="w-full px-2 py-1.5 border-2 border-primary-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+      <div class="mb-3 flex-shrink-0">
+        <label class="block text-xs font-medium text-gray-700 mb-1.5">Método de pago</label>
+        <select id="metodoPago" onchange="mostrarBancos()" class="w-full px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           <option value="efectivo">Efectivo</option>
           <option value="tarjeta">Tarjeta</option>
           <option value="transferencia">Transferencia</option>
         </select>
       </div>
 
-      <div id="selectorBanco" class="mb-3 hidden">
+      <div id="selectorBanco" class="mb-3 hidden flex-shrink-0">
         <label class="block text-xs font-medium text-gray-700 mb-1">Banco <span class="text-red-500">*</span></label>
         <div id="errorBanco" class="text-red-500 text-xs mb-1 hidden">Debes seleccionar un banco</div>
         <div class="flex gap-2 justify-between">
@@ -199,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <input type="hidden" id="bancoSeleccionado" value="">
       </div>
 
-      <button onclick="procesarVenta()" class="w-full bg-gradient-to-r from-secondary-500 to-secondary-600 text-white py-3.5 px-4 rounded-lg hover:from-secondary-600 hover:to-secondary-700 transition font-semibold text-base shadow-lg hover:shadow-xl">
+      <button onclick="procesarVenta()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition font-medium text-sm shadow-md hover:shadow-lg flex-shrink-0">
         <i class="fas fa-cash-register mr-2"></i> Cobrar
       </button>
     </div>
@@ -282,6 +315,17 @@ document.getElementById('listaServicios').addEventListener('click', function(e) 
   }
 });
 
+// Event delegation para servicios por categoría
+const listaServiciosCategoria = document.getElementById('listaServiciosCategoria');
+if (listaServiciosCategoria) {
+  listaServiciosCategoria.addEventListener('click', function(e) {
+    const item = e.target.closest('[data-tipo]');
+    if (item && item.style.display !== 'none') {
+      agregarItem(item.dataset.tipo, parseInt(item.dataset.id), item.dataset.nombre, parseFloat(item.dataset.precio));
+    }
+  });
+}
+
 document.getElementById('listaProductos').addEventListener('click', function(e) {
   const item = e.target.closest('[data-tipo]');
   if (item && parseInt(item.dataset.stock) > 0) {
@@ -290,12 +334,66 @@ document.getElementById('listaProductos').addEventListener('click', function(e) 
 });
 
 function mostrarTab(tab) {
-  document.getElementById('listaServicios').classList.toggle('hidden', tab !== 'servicios');
-  document.getElementById('listaProductos').classList.toggle('hidden', tab !== 'productos');
-  document.getElementById('tabServicios').classList.toggle('border-primary-500', tab === 'servicios');
-  document.getElementById('tabServicios').classList.toggle('text-primary-600', tab === 'servicios');
-  document.getElementById('tabProductos').classList.toggle('border-primary-500', tab === 'productos');
-  document.getElementById('tabProductos').classList.toggle('text-primary-600', tab === 'productos');
+  // Obtener los contenedores
+  const contenedorServicios = document.getElementById('contenedorServicios');
+  const contenedorCategoria = document.getElementById('contenedorCategoria');
+  const contenedorProductos = document.getElementById('contenedorProductos');
+  
+  // Ocultar todos los contenedores
+  if (contenedorServicios) contenedorServicios.classList.add('hidden');
+  if (contenedorCategoria) contenedorCategoria.classList.add('hidden');
+  if (contenedorProductos) contenedorProductos.classList.add('hidden');
+  
+  // Mostrar el contenedor correspondiente
+  if (tab === 'servicios') {
+    if (contenedorServicios) contenedorServicios.classList.remove('hidden');
+  } else if (tab === 'categoria') {
+    if (contenedorCategoria) contenedorCategoria.classList.remove('hidden');
+    // Filtrar por categoría al mostrar la pestaña
+    filtrarPorCategoria();
+  } else if (tab === 'productos') {
+    if (contenedorProductos) contenedorProductos.classList.remove('hidden');
+  }
+  
+  // Actualizar estilos de tabs
+  const tabServicios = document.getElementById('tabServicios');
+  const tabCategoria = document.getElementById('tabCategoria');
+  const tabProductos = document.getElementById('tabProductos');
+  
+  // Resetear todos los tabs
+  [tabServicios, tabCategoria, tabProductos].forEach(t => {
+    if (t) {
+      t.classList.remove('border-primary-500', 'text-primary-600');
+      t.classList.add('border-transparent', 'text-gray-500');
+    }
+  });
+  
+  // Activar el tab correspondiente
+  if (tab === 'servicios' && tabServicios) {
+    tabServicios.classList.add('border-primary-500', 'text-primary-600');
+    tabServicios.classList.remove('border-transparent', 'text-gray-500');
+  } else if (tab === 'categoria' && tabCategoria) {
+    tabCategoria.classList.add('border-primary-500', 'text-primary-600');
+    tabCategoria.classList.remove('border-transparent', 'text-gray-500');
+  } else if (tab === 'productos' && tabProductos) {
+    tabProductos.classList.add('border-primary-500', 'text-primary-600');
+    tabProductos.classList.remove('border-transparent', 'text-gray-500');
+  }
+}
+
+function filtrarPorCategoria() {
+  const filtroCategoria = document.getElementById('filtroCategoria');
+  const categoriaId = filtroCategoria ? filtroCategoria.value : '';
+  const serviciosItems = document.querySelectorAll('#listaServiciosCategoria .servicio-item');
+  
+  serviciosItems.forEach(function(item) {
+    const itemCategoriaId = item.dataset.categoriaId || '';
+    if (!categoriaId || itemCategoriaId === categoriaId) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
 }
 
 function agregarItem(tipo, id, nombre, precio) {
@@ -303,7 +401,8 @@ function agregarItem(tipo, id, nombre, precio) {
   if (existe) {
     existe.cantidad++;
   } else {
-    carrito.push({ tipo, id, nombre, precio, cantidad: 1 });
+    // Guardar el precio original para referencia
+    carrito.push({ tipo, id, nombre, precio, cantidad: 1, precioOriginal: precio });
   }
   renderCarrito();
 }
@@ -324,23 +423,59 @@ function cambiarCantidad(index, delta) {
 function renderCarrito() {
   const container = document.getElementById('itemsCarrito');
   if (carrito.length === 0) {
-    container.innerHTML = '<p class="text-gray-500 text-center py-4">Carrito vacío</p>';
+    container.innerHTML = '<p class="text-gray-500 text-center py-8 text-sm">Carrito vacío</p>';
   } else {
     container.innerHTML = carrito.map(function(item, i) {
-      return '<div class="flex items-center justify-between p-2 bg-white rounded-lg border border-primary-200 shadow-sm hover:shadow-md transition">' +
-        '<div class="flex-1 min-w-0">' +
-          '<p class="text-xs font-medium text-gray-800 truncate">' + item.nombre + '</p>' +
-          '<p class="text-xs text-gray-500">' + formatearPrecio(item.precio) + ' x ' + item.cantidad + '</p>' +
+      // Obtener el precio original en MXN para el input
+      const precioOriginal = monedaActual === 'USD' ? item.precio * tipoCambio : item.precio;
+      return '<div class="flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 mb-2 shadow-sm hover:shadow transition">' +
+        '<div class="flex-1 min-w-0 mr-3">' +
+          '<p class="text-sm font-medium text-gray-800 truncate mb-1">' + item.nombre + '</p>' +
+          '<div class="flex items-center gap-2 flex-wrap">' +
+            '<span class="text-xs text-gray-500 whitespace-nowrap">Precio:</span>' +
+            '<input type="number" step="0.01" min="0" value="' + precioOriginal.toFixed(2) + '" ' +
+                   'onchange="actualizarPrecio(' + i + ', this.value)" ' +
+                   'onblur="actualizarPrecio(' + i + ', this.value)" ' +
+                   'class="w-20 px-2 py-1 border border-yellow-300 bg-yellow-50 rounded text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400" ' +
+                   'style="text-align: center;">' +
+            '<span class="text-xs text-gray-500 whitespace-nowrap">' + monedaActual + '</span>' +
+            '<span class="text-xs text-gray-500 whitespace-nowrap">x ' + item.cantidad + '</span>' +
+          '</div>' +
         '</div>' +
-        '<div class="flex items-center gap-1 ml-2">' +
-          '<button onclick="cambiarCantidad(' + i + ', -1)" class="w-6 h-6 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded text-xs transition">-</button>' +
-          '<span class="w-6 text-center font-medium text-gray-700 text-xs">' + item.cantidad + '</span>' +
-          '<button onclick="cambiarCantidad(' + i + ', 1)" class="w-6 h-6 bg-primary-100 hover:bg-primary-200 text-primary-700 rounded text-xs transition">+</button>' +
-          '<button onclick="quitarItem(' + i + ')" class="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition text-xs"><i class="fas fa-trash"></i></button>' +
+        '<div class="flex items-center gap-1.5 flex-shrink-0 ml-2">' +
+          '<button onclick="cambiarCantidad(' + i + ', -1)" class="w-7 h-7 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition flex items-center justify-center">-</button>' +
+          '<span class="w-7 text-center font-medium text-gray-700 text-sm">' + item.cantidad + '</span>' +
+          '<button onclick="cambiarCantidad(' + i + ', 1)" class="w-7 h-7 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition flex items-center justify-center">+</button>' +
+          '<button onclick="quitarItem(' + i + ')" class="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded transition"><i class="fas fa-trash text-xs"></i></button>' +
         '</div>' +
       '</div>';
     }).join('');
   }
+  actualizarTotales();
+}
+
+function actualizarPrecio(index, nuevoPrecio) {
+  if (index < 0 || index >= carrito.length) return;
+  
+  const precioNum = parseFloat(nuevoPrecio);
+  if (isNaN(precioNum) || precioNum < 0) {
+    // Si el precio no es válido, restaurar el precio original
+    renderCarrito();
+    return;
+  }
+  
+  // Convertir el precio a la moneda base (MXN) si está en USD
+  if (monedaActual === 'USD') {
+    carrito[index].precio = precioNum / tipoCambio;
+  } else {
+    carrito[index].precio = precioNum;
+  }
+  
+  // Guardar el precio original para referencia
+  if (!carrito[index].precioOriginal) {
+    carrito[index].precioOriginal = carrito[index].precio;
+  }
+  
   actualizarTotales();
 }
 
@@ -482,6 +617,10 @@ function procesarVenta() {
         errorBanco.classList.add('hidden');
       }
       mostrarBancos();
+      // Actualizar saldos inmediatamente después de la venta
+      if (typeof actualizarSaldos === 'function') {
+        actualizarSaldos();
+      }
     } else {
       mostrarNotificacion('error', 'Error', result.error);
     }
@@ -567,6 +706,10 @@ function guardarSaldoInicial(event) {
   .then(function(response) { return response.json(); })
   .then(function(result) {
     if (result.success) {
+      // Actualizar saldos inmediatamente antes de redirigir
+      if (typeof window.actualizarSaldos === 'function') {
+        window.actualizarSaldos();
+      }
       // Redirigir sin el parámetro necesitaSaldoInicial para evitar que se muestre de nuevo
       window.location.href = '/pos';
     } else {
@@ -593,6 +736,29 @@ function guardarSaldoInicial(event) {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Asegurar que el scroll interno funcione correctamente - igual que el sidebar */
+#listaServicios,
+#listaProductos {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  /* El scrollbar se mostrará automáticamente cuando el contenido exceda la altura */
+}
+
+/* Forzar 3 columnas siempre */
+#listaServicios > div,
+#listaProductos > div {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.375rem !important;
+}
+
+/* Asegurar que las tarjetas ocupen todo el ancho disponible */
+#listaServicios [data-tipo],
+#listaProductos [data-tipo] {
+  width: 100% !important;
+  max-width: 100% !important;
 }
 </style>
 `}) %>

@@ -14,7 +14,18 @@ const showLogin = (req, res) => {
 // Procesar login
 const processLogin = async (req, res) => {
   try {
+    console.log('Login attempt - Body:', req.body);
+    console.log('Login attempt - Email:', req.body?.email);
+    console.log('Login attempt - Password:', req.body?.password ? '***' : 'undefined');
+    
     const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.render('auth/login', {
+        title: 'Iniciar Sesión',
+        error: 'Email y contraseña son requeridos',
+      });
+    }
 
     // Buscar usuario
     const usuario = await prisma.usuario.findUnique({
@@ -23,15 +34,19 @@ const processLogin = async (req, res) => {
     });
 
     if (!usuario) {
+      console.log('Usuario no encontrado');
       return res.render('auth/login', {
         title: 'Iniciar Sesión',
         error: 'Credenciales incorrectas',
       });
     }
 
+    console.log('Verificando contraseña...');
     // Verificar contraseña
     const isValid = await bcrypt.compare(password, usuario.password);
+    console.log('Contraseña válida:', isValid);
     if (!isValid) {
+      console.log('Contraseña incorrecta');
       return res.render('auth/login', {
         title: 'Iniciar Sesión',
         error: 'Credenciales incorrectas',
@@ -40,12 +55,35 @@ const processLogin = async (req, res) => {
 
     // Verificar si está activo
     if (!usuario.activo) {
+      console.log('Usuario inactivo');
       return res.render('auth/login', {
         title: 'Iniciar Sesión',
         error: 'Tu cuenta está desactivada',
       });
     }
 
+    console.log('Creando sesión...');
+    
+    // Cargar permisos del usuario
+    let permisos = [];
+    if (usuario.rol !== 'admin') {
+      // Los administradores tienen acceso a todo, no necesitan permisos específicos
+      const permisosUsuario = await prisma.permisoUsuario.findMany({
+        where: {
+          usuarioId: usuario.id,
+          acceso: true,
+        },
+        include: {
+          modulo: true,
+        },
+      });
+      permisos = permisosUsuario.map(p => ({
+        moduloId: p.moduloId,
+        moduloNombre: p.modulo.nombre,
+        ruta: p.modulo.ruta,
+      }));
+    }
+    
     // Crear sesión
     req.session.user = {
       id: usuario.id,
@@ -53,17 +91,21 @@ const processLogin = async (req, res) => {
       nombre: usuario.nombre,
       rol: usuario.rol,
       doctorId: usuario.doctorId,
+      permisos: permisos,
     };
+    console.log('Sesión creada para usuario:', usuario.email, 'Rol:', usuario.rol, 'Permisos:', permisos.length);
 
     // Verificar si es admin o recepcionista y si necesita saldo inicial
     // Solo para admin y recepcionista, verificar si es el primer inicio del día
     if ((usuario.rol === 'admin' || usuario.rol === 'recepcionista')) {
+      console.log('Verificando saldo inicial para admin/recepcionista...');
       try {
         const hoy = moment().tz(config.timezone).startOf('day').toDate();
         const mañana = moment().tz(config.timezone).endOf('day').toDate();
         const ayer = moment().tz(config.timezone).subtract(1, 'day').startOf('day').toDate();
         const finAyer = moment().tz(config.timezone).subtract(1, 'day').endOf('day').toDate();
         
+        console.log('Buscando saldo inicial de hoy...');
         // Verificar si hay saldo inicial hoy
         const saldoInicialHoy = await prisma.corteCaja.findFirst({
           where: {
@@ -75,6 +117,8 @@ const processLogin = async (req, res) => {
           },
         });
 
+        console.log('Saldo inicial hoy:', saldoInicialHoy ? 'Encontrado' : 'No encontrado');
+
         // Verificar si ayer hubo algún corte (automático o manual)
         const corteAyer = await prisma.corteCaja.findFirst({
           where: {
@@ -84,20 +128,59 @@ const processLogin = async (req, res) => {
           orderBy: { createdAt: 'desc' },
         });
 
+        console.log('Corte ayer:', corteAyer ? 'Encontrado' : 'No encontrado');
+
         // Si no hay saldo inicial hoy, necesita saldo inicial en estos casos:
         // 1. Si ayer hubo algún corte (automático o manual) - después de cualquier corte se necesita saldo inicial
         // 2. Si es el primer día y no hay saldo inicial
         if (!saldoInicialHoy) {
+          console.log('Redirigiendo a POS para saldo inicial...');
+          // Guardar sesión explícitamente antes de redirigir
+          console.log('Guardando sesión antes de redirigir...');
+          console.log('Sesión antes de guardar:', JSON.stringify(req.session.user));
+          
+          // Usar await para asegurar que la sesión se guarde
+          await new Promise((resolve, reject) => {
+            req.session.save((err) => {
+              if (err) {
+                console.error('Error al guardar sesión:', err);
+                reject(err);
+              } else {
+                console.log('Sesión guardada exitosamente');
+                console.log('Sesión después de guardar:', JSON.stringify(req.session.user));
+                resolve();
+              }
+            });
+          });
+          
+          console.log('Redirigiendo a /pos?necesitaSaldoInicial=true');
           return res.redirect('/pos?necesitaSaldoInicial=true');
         }
+        console.log('Saldo inicial OK, continuando al dashboard...');
       } catch (corteError) {
         // Si hay error al consultar cortes, simplemente continuar al dashboard
         // No bloquear el login por un error en la verificación de cortes
         console.error('Error al verificar cortes en login (no crítico):', corteError);
       }
+    } else {
+      console.log('Usuario no es admin/recepcionista, redirigiendo directamente al dashboard...');
     }
 
-    res.redirect('/dashboard');
+    console.log('Redirigiendo al dashboard...');
+    // Guardar sesión explícitamente antes de redirigir
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          console.error('Error al guardar sesión:', err);
+          reject(err);
+        } else {
+          console.log('Sesión guardada para dashboard');
+          resolve();
+        }
+      });
+    });
+    
+    return res.redirect('/dashboard');
   } catch (error) {
     console.error('Error en login:', error);
     res.render('auth/login', {

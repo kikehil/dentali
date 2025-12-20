@@ -1,0 +1,113 @@
+<%- include('../../layout', { body: `
+<div class="max-w-7xl mx-auto">
+  <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold text-gray-900">
+        <i class="fas fa-users mr-3 text-primary-500"></i>
+        Control de Usuarios
+      </h1>
+      <a href="/configuracion/usuarios/create" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <i class="fas fa-plus"></i>
+        <span>Nuevo Usuario</span>
+      </a>
+    </div>
+
+    ` + (success ? `
+    <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+      ` + success + `
+    </div>
+    ` : '') + `
+
+    ` + (error ? `
+    <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      ` + error + `
+    </div>
+    ` : '') + `
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Módulos</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          ` + (usuarios && usuarios.length > 0 ? usuarios.map(usuario => {
+            const modulosConAcceso = usuario.permisos.filter(p => p.acceso).map(p => p.modulo.nombre);
+            return `
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10">
+                    <div class="h-10 w-10 rounded-full bg-primary-500 flex items-center justify-center text-white font-semibold">
+                      ${usuario.nombre.charAt(0).toUpperCase()}
+                    </div>
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900">${usuario.nombre}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">${usuario.email}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  usuario.rol === 'admin' ? 'bg-purple-100 text-purple-800' :
+                  usuario.rol === 'doctor' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }">
+                  ${usuario.rol}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${usuario.doctor ? usuario.doctor.nombre + ' ' + usuario.doctor.apellido : '-'}
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex flex-wrap gap-1">
+                  ${modulosConAcceso.length > 0 ? modulosConAcceso.map(modulo => `
+                    <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">${modulo}</span>
+                  `).join('') : '<span class="text-xs text-gray-400">Sin módulos asignados</span>'}
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  usuario.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }">
+                  ${usuario.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <a href="/configuracion/usuarios/${usuario.id}/edit" class="text-primary-600 hover:text-primary-900 mr-3">
+                  <i class="fas fa-edit"></i> Editar
+                </a>
+                ${usuario.id !== user.id ? `
+                <form action="/configuracion/usuarios/${usuario.id}/delete" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de eliminar este usuario?');">
+                  <button type="submit" class="text-red-600 hover:text-red-900">
+                    <i class="fas fa-trash"></i> Eliminar
+                  </button>
+                </form>
+                ` : ''}
+              </td>
+            </tr>
+            `;
+          }).join('') : `
+          <tr>
+            <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+              No hay usuarios registrados
+            </td>
+          </tr>
+          `) + `
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+` }) %>
+

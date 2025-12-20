@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const doctoresController = require('../controllers/doctoresController');
-const { isAuthenticated, isAdmin } = require('../middleware/auth');
+const { isAuthenticated, isAdmin, hasModuleAccess } = require('../middleware/auth');
 
 // Vistas
-router.get('/', isAuthenticated, doctoresController.index);
+router.get('/', isAuthenticated, hasModuleAccess('/doctores'), doctoresController.index);
 router.get('/crear', isAuthenticated, isAdmin, doctoresController.create);
 router.post('/crear', isAuthenticated, isAdmin, doctoresController.store);
 router.get('/:id/editar', isAuthenticated, isAdmin, doctoresController.edit);

@@ -4,7 +4,9 @@
     <div class="flex justify-between items-center mb-6">
       <div>
         <h2 class="text-2xl font-bold text-gray-800">
-          ${esManual ? '<i class="fas fa-cut text-red-500 mr-2"></i>Corte Manual de Caja' : 'Corte de Caja - ' + hora}
+          ${tipoCorte === 'efectivo' ? '<i class="fas fa-money-bill-wave text-green-500 mr-2"></i>Corte de Efectivo' : 
+            tipoCorte === 'bancos' ? '<i class="fas fa-university text-blue-500 mr-2"></i>Corte de Bancos' :
+            esManual ? '<i class="fas fa-cut text-red-500 mr-2"></i>Corte Manual de Caja' : 'Corte de Caja - ' + hora}
         </h2>
         <p class="text-gray-600">${now().format('DD/MM/YYYY HH:mm')}</p>
         ${esManual ? '<p class="text-sm text-amber-600 mt-1"><i class="fas fa-info-circle mr-1"></i>Corte realizado manualmente</p>' : ''}
@@ -14,7 +16,60 @@
       </a>
     </div>
 
-    <!-- Resumen -->
+    ${tipoCorte === 'efectivo' ? `
+    <!-- Resumen Efectivo -->
+    <div class="grid md:grid-cols-2 gap-4 mb-6">
+      <div class="bg-primary-50 rounded-lg p-4 border-l-4 border-primary-500">
+        <p class="text-sm text-gray-600 mb-1">Saldo Inicial Efectivo</p>
+        <p class="text-2xl font-bold text-primary-600">${formatCurrency(resumen.saldoInicialEfectivo)}</p>
+      </div>
+      <div class="bg-secondary-50 rounded-lg p-4 border-l-4 border-secondary-500">
+        <p class="text-sm text-gray-600 mb-1">Total Ventas en Efectivo</p>
+        <p class="text-2xl font-bold text-secondary-600">${formatCurrency(resumen.ventasEfectivo)}</p>
+        <p class="text-xs text-gray-500 mt-1">${resumen.cantidadVentas} venta(s)</p>
+      </div>
+    </div>
+    
+    ${resumen.gastosEfectivo > 0 ? `
+    <div class="bg-red-50 rounded-lg p-4 mb-6 border-l-4 border-red-500">
+      <p class="text-sm text-gray-600 mb-1">Gastos en Efectivo</p>
+      <p class="text-2xl font-bold text-red-600">${formatCurrency(resumen.gastosEfectivo)}</p>
+    </div>
+    ` : ''}
+
+    <!-- Saldo esperado -->
+    <div class="bg-amber-50 rounded-lg p-4 mb-6 border-l-4 border-amber-500">
+      <p class="text-sm text-gray-600 mb-1">Saldo Esperado en Caja</p>
+      <p class="text-3xl font-bold text-amber-600">${formatCurrency(resumen.saldoEsperado)}</p>
+      <p class="text-xs text-gray-500 mt-1">Saldo Inicial + Ventas en Efectivo - Gastos en Efectivo</p>
+    </div>
+    ` : tipoCorte === 'bancos' ? `
+    <!-- Resumen Bancos -->
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
+        <p class="text-sm text-gray-600 mb-1">Azteca</p>
+        <p class="text-lg font-bold text-green-600 mb-2">Saldo Inicial: ${formatCurrency(resumen.saldoInicialTarjetaAzteca + resumen.saldoInicialTransferenciaAzteca)}</p>
+        <p class="text-sm text-gray-600">Ventas: ${formatCurrency(resumen.ventasTarjetaAzteca + resumen.ventasTransferenciaAzteca)}</p>
+        ${(resumen.gastosTarjetaAzteca + resumen.gastosTransferenciaAzteca) > 0 ? `<p class="text-sm text-red-600">Gastos: ${formatCurrency(resumen.gastosTarjetaAzteca + resumen.gastosTransferenciaAzteca)}</p>` : ''}
+        <p class="text-lg font-bold text-green-700 mt-2">Esperado: ${formatCurrency(resumen.saldoEsperadoAzteca)}</p>
+      </div>
+      <div class="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
+        <p class="text-sm text-gray-600 mb-1">BBVA</p>
+        <p class="text-lg font-bold text-blue-600 mb-2">Saldo Inicial: ${formatCurrency(resumen.saldoInicialTarjetaBbva + resumen.saldoInicialTransferenciaBbva)}</p>
+        <p class="text-sm text-gray-600">Ventas: ${formatCurrency(resumen.ventasTarjetaBbva + resumen.ventasTransferenciaBbva)}</p>
+        ${(resumen.gastosTarjetaBbva + resumen.gastosTransferenciaBbva) > 0 ? `<p class="text-sm text-red-600">Gastos: ${formatCurrency(resumen.gastosTarjetaBbva + resumen.gastosTransferenciaBbva)}</p>` : ''}
+        <p class="text-lg font-bold text-blue-700 mt-2">Esperado: ${formatCurrency(resumen.saldoEsperadoBbva)}</p>
+      </div>
+      <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-500">
+        <p class="text-sm text-gray-600 mb-1">Mercado Pago</p>
+        <p class="text-lg font-bold text-indigo-600 mb-2">Saldo Inicial: ${formatCurrency(resumen.saldoInicialTarjetaMp + resumen.saldoInicialTransferenciaMp)}</p>
+        <p class="text-sm text-gray-600">Ventas: ${formatCurrency(resumen.ventasTarjetaMp + resumen.ventasTransferenciaMp)}</p>
+        ${(resumen.gastosTarjetaMp + resumen.gastosTransferenciaMp) > 0 ? `<p class="text-sm text-red-600">Gastos: ${formatCurrency(resumen.gastosTarjetaMp + resumen.gastosTransferenciaMp)}</p>` : ''}
+        <p class="text-lg font-bold text-indigo-700 mt-2">Esperado: ${formatCurrency(resumen.saldoEsperadoMp)}</p>
+      </div>
+    </div>
+    ` : `
+    <!-- Resumen General -->
     <div class="grid md:grid-cols-2 gap-4 mb-6">
       <div class="bg-primary-50 rounded-lg p-4 border-l-4 border-primary-500">
         <p class="text-sm text-gray-600 mb-1">Saldo Inicial</p>
@@ -63,6 +118,7 @@
       <p class="text-3xl font-bold text-amber-600">${formatCurrency(resumen.saldoEsperado)}</p>
       <p class="text-xs text-gray-500 mt-1">Saldo Inicial + Ventas en Efectivo</p>
     </div>
+    `}
 
     <!-- Reporte Detallado -->
     <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -74,7 +130,7 @@
       <div class="mb-6 pb-6 border-b">
         <h4 class="text-md font-semibold text-gray-700 mb-3">Saldo Inicial</h4>
         <p class="text-2xl font-bold text-primary-600">${formatCurrency(resumen.saldoInicial)}</p>
-        <p class="text-xs text-gray-500 mt-1">${moment(desdeFecha).tz('${config.timezone}').format('DD/MM/YYYY HH:mm')}</p>
+        <p class="text-xs text-gray-500 mt-1">${moment(desdeFecha).tz(config.timezone).format('DD/MM/YYYY HH:mm')}</p>
       </div>
 
       <!-- Ventas por Doctor -->
@@ -143,7 +199,7 @@
             <tbody class="divide-y divide-gray-100">
               ${gastos.map(function(g) {
                 return '<tr>' +
-                  '<td class="px-4 py-2 text-gray-600">' + moment(g.createdAt).tz('${config.timezone}').format('DD/MM/YYYY HH:mm') + '</td>' +
+                  '<td class="px-4 py-2 text-gray-600">' + moment(g.createdAt).tz(config.timezone).format('DD/MM/YYYY HH:mm') + '</td>' +
                   '<td class="px-4 py-2 text-gray-800">' + g.motivo + '</td>' +
                   '<td class="px-4 py-2"><span class="px-2 py-1 rounded-full text-xs ' + 
                     (g.metodoPago === 'efectivo' ? 'bg-green-100 text-green-700' : 
@@ -169,6 +225,44 @@
 
     <!-- Formulario de corte -->
     <form id="formCorte" onsubmit="procesarCorte(event)" class="bg-gray-50 rounded-lg p-6">
+      ${tipoCorte === 'efectivo' ? `
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Saldo Final en Efectivo ($)
+        </label>
+        <input type="number" id="saldoFinal" step="0.01" min="0" required 
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg text-2xl font-bold text-center focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+               placeholder="0.00" autofocus value="" autocomplete="off">
+        <p class="text-xs text-gray-500 mt-1">Ingresa el saldo real contado en efectivo</p>
+      </div>
+      ` : tipoCorte === 'bancos' ? `
+      <div class="grid md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Saldo Final Azteca ($)
+          </label>
+          <input type="number" id="saldoFinalAzteca" step="0.01" min="0" required 
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg text-xl font-bold text-center focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                 placeholder="0.00" autofocus value="" autocomplete="off">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Saldo Final BBVA ($)
+          </label>
+          <input type="number" id="saldoFinalBbva" step="0.01" min="0" required 
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg text-xl font-bold text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                 placeholder="0.00" value="" autocomplete="off">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Saldo Final Mercado Pago ($)
+          </label>
+          <input type="number" id="saldoFinalMp" step="0.01" min="0" required 
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg text-xl font-bold text-center focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                 placeholder="0.00" value="" autocomplete="off">
+        </div>
+      </div>
+      ` : `
       <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">
           Saldo Final en Caja ($)
@@ -178,6 +272,7 @@
                placeholder="0.00" autofocus value="" autocomplete="off">
         <p class="text-xs text-gray-500 mt-1">Ingresa el saldo real contado en caja</p>
       </div>
+      `}
 
       <div id="diferenciaContainer" class="mb-4 hidden">
         <div class="p-3 rounded-lg" id="diferenciaBox">
@@ -232,7 +327,7 @@
                    v.metodoPago === 'tarjeta' ? 'bg-blue-100 text-blue-700' : 
                    'bg-purple-100 text-purple-700') + '">' + v.metodoPago + '</span></td>' +
                 '<td class="px-4 py-2 text-right font-bold text-gray-800">' + formatCurrency(v.total) + ' <span class="text-xs text-gray-500">' + (v.moneda || 'MXN') + '</span></td>' +
-                '<td class="px-4 py-2 text-gray-500">' + moment(v.createdAt).tz('${config.timezone}').format('HH:mm') + '</td>' +
+                '<td class="px-4 py-2 text-gray-500">' + moment(v.createdAt).tz(config.timezone).format('HH:mm') + '</td>' +
               '</tr>';
             }).join('')}
           </tbody>
@@ -246,22 +341,58 @@
 <script>
 function procesarCorte(event) {
   event.preventDefault();
-  const saldoFinal = parseFloat(document.getElementById('saldoFinal').value);
   const observaciones = document.getElementById('observaciones').value;
+  const tipoCorte = '${tipoCorte || ''}';
   
-  if (isNaN(saldoFinal) || saldoFinal < 0) {
-    mostrarNotificacion('error', 'Error', 'Ingresa un saldo final válido');
-    return;
+  let url = '${esManual ? '/pos/corte-manual' : '/pos/corte'}';
+  let body = {
+    hora: '${hora}',
+    observaciones: observaciones
+  };
+  
+  if (tipoCorte === 'efectivo') {
+    const saldoFinal = parseFloat(document.getElementById('saldoFinal').value);
+    if (isNaN(saldoFinal) || saldoFinal < 0) {
+      mostrarNotificacion('error', 'Error', 'Ingresa un saldo final válido');
+      return;
+    }
+    url = '/pos/corte-efectivo';
+    body.saldoFinal = saldoFinal;
+  } else if (tipoCorte === 'bancos') {
+    const saldoFinalAzteca = parseFloat(document.getElementById('saldoFinalAzteca').value);
+    const saldoFinalBbva = parseFloat(document.getElementById('saldoFinalBbva').value);
+    const saldoFinalMp = parseFloat(document.getElementById('saldoFinalMp').value);
+    
+    if (isNaN(saldoFinalAzteca) || saldoFinalAzteca < 0) {
+      mostrarNotificacion('error', 'Error', 'Ingresa un saldo final válido para Azteca');
+      return;
+    }
+    if (isNaN(saldoFinalBbva) || saldoFinalBbva < 0) {
+      mostrarNotificacion('error', 'Error', 'Ingresa un saldo final válido para BBVA');
+      return;
+    }
+    if (isNaN(saldoFinalMp) || saldoFinalMp < 0) {
+      mostrarNotificacion('error', 'Error', 'Ingresa un saldo final válido para Mercado Pago');
+      return;
+    }
+    
+    url = '/pos/corte-bancos';
+    body.saldoFinalAzteca = saldoFinalAzteca;
+    body.saldoFinalBbva = saldoFinalBbva;
+    body.saldoFinalMp = saldoFinalMp;
+  } else {
+    const saldoFinal = parseFloat(document.getElementById('saldoFinal').value);
+    if (isNaN(saldoFinal) || saldoFinal < 0) {
+      mostrarNotificacion('error', 'Error', 'Ingresa un saldo final válido');
+      return;
+    }
+    body.saldoFinal = saldoFinal;
   }
 
-    fetch('${esManual ? '/pos/corte-manual' : '/pos/corte'}', {
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        hora: '${hora}',
-        saldoFinal: saldoFinal,
-        observaciones: observaciones
-      })
+      body: JSON.stringify(body)
     })
   .then(function(response) { return response.json(); })
   .then(function(result) {
@@ -307,34 +438,72 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Calcular diferencia en tiempo real
-document.getElementById('saldoFinal').addEventListener('input', function() {
-  const saldoFinal = parseFloat(this.value) || 0;
-  const saldoEsperado = ${resumen.saldoEsperado};
-  const diferencia = saldoFinal - saldoEsperado;
-  
-  const container = document.getElementById('diferenciaContainer');
-  const box = document.getElementById('diferenciaBox');
-  const texto = document.getElementById('diferenciaTexto');
-  
-  if (!isNaN(saldoFinal) && saldoFinal > 0) {
-    container.classList.remove('hidden');
-    if (diferencia === 0) {
-      box.className = 'p-3 rounded-lg bg-green-100 border border-green-300';
-      texto.className = 'text-xl font-bold text-green-700';
-      texto.textContent = 'Cuadra perfecto';
-    } else if (diferencia > 0) {
-      box.className = 'p-3 rounded-lg bg-blue-100 border border-blue-300';
-      texto.className = 'text-xl font-bold text-blue-700';
-      texto.textContent = 'Sobrante: ' + diferencia.toFixed(2);
-    } else {
-      box.className = 'p-3 rounded-lg bg-red-100 border border-red-300';
-      texto.className = 'text-xl font-bold text-red-700';
-      texto.textContent = 'Faltante: ' + Math.abs(diferencia).toFixed(2);
-    }
-  } else {
-    container.classList.add('hidden');
+const tipoCorte = '${tipoCorte || ''}';
+if (tipoCorte === 'efectivo') {
+  const saldoFinalInput = document.getElementById('saldoFinal');
+  if (saldoFinalInput) {
+    saldoFinalInput.addEventListener('input', function() {
+      const saldoFinal = parseFloat(this.value) || 0;
+      const saldoEsperado = ${resumen.saldoEsperado || 0};
+      const diferencia = saldoFinal - saldoEsperado;
+      
+      const container = document.getElementById('diferenciaContainer');
+      const box = document.getElementById('diferenciaBox');
+      const texto = document.getElementById('diferenciaTexto');
+      
+      if (!isNaN(saldoFinal) && saldoFinal > 0) {
+        container.classList.remove('hidden');
+        if (diferencia === 0) {
+          box.className = 'p-3 rounded-lg bg-green-100 border border-green-300';
+          texto.className = 'text-xl font-bold text-green-700';
+          texto.textContent = 'Cuadra perfecto';
+        } else if (diferencia > 0) {
+          box.className = 'p-3 rounded-lg bg-blue-100 border border-blue-300';
+          texto.className = 'text-xl font-bold text-blue-700';
+          texto.textContent = 'Sobrante: ' + diferencia.toFixed(2);
+        } else {
+          box.className = 'p-3 rounded-lg bg-red-100 border border-red-300';
+          texto.className = 'text-xl font-bold text-red-700';
+          texto.textContent = 'Faltante: ' + Math.abs(diferencia).toFixed(2);
+        }
+      } else {
+        container.classList.add('hidden');
+      }
+    });
   }
-});
+} else if (tipoCorte !== 'bancos') {
+  const saldoFinalInput = document.getElementById('saldoFinal');
+  if (saldoFinalInput) {
+    saldoFinalInput.addEventListener('input', function() {
+      const saldoFinal = parseFloat(this.value) || 0;
+      const saldoEsperado = ${resumen.saldoEsperado || 0};
+      const diferencia = saldoFinal - saldoEsperado;
+      
+      const container = document.getElementById('diferenciaContainer');
+      const box = document.getElementById('diferenciaBox');
+      const texto = document.getElementById('diferenciaTexto');
+      
+      if (!isNaN(saldoFinal) && saldoFinal > 0) {
+        container.classList.remove('hidden');
+        if (diferencia === 0) {
+          box.className = 'p-3 rounded-lg bg-green-100 border border-green-300';
+          texto.className = 'text-xl font-bold text-green-700';
+          texto.textContent = 'Cuadra perfecto';
+        } else if (diferencia > 0) {
+          box.className = 'p-3 rounded-lg bg-blue-100 border border-blue-300';
+          texto.className = 'text-xl font-bold text-blue-700';
+          texto.textContent = 'Sobrante: ' + diferencia.toFixed(2);
+        } else {
+          box.className = 'p-3 rounded-lg bg-red-100 border border-red-300';
+          texto.className = 'text-xl font-bold text-red-700';
+          texto.textContent = 'Faltante: ' + Math.abs(diferencia).toFixed(2);
+        }
+      } else {
+        container.classList.add('hidden');
+      }
+    });
+  }
+}
 
 function mostrarNotificacion(tipo, titulo, mensaje) {
   var existente = document.getElementById('notificacionModal');

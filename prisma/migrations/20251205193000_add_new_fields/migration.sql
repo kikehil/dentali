@@ -48,3 +48,15 @@ ALTER TABLE `gastos` ADD CONSTRAINT `gastos_usuarioId_fkey`
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+

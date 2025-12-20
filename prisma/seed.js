@@ -20,6 +20,14 @@ async function main() {
   await prisma.consultorio.deleteMany();
   await prisma.servicio.deleteMany();
   await prisma.producto.deleteMany();
+  
+  // Intentar borrar categorías solo si la tabla existe
+  try {
+    await prisma.categoria.deleteMany();
+  } catch (error) {
+    // Si la tabla no existe, simplemente continuar
+    console.log('⚠️  Tabla categorias no existe aún, se creará durante el seed');
+  }
 
   // Crear consultorios
   console.log('📍 Creando consultorios...');
@@ -186,6 +194,80 @@ async function main() {
     }),
   ]);
 
+  // Crear categorías primero
+  console.log('📁 Creando categorías...');
+  const categorias = await Promise.all([
+    prisma.categoria.upsert({
+      where: { nombre: 'General' },
+      update: {},
+      create: {
+        nombre: 'General',
+        descripcion: 'Servicios generales de odontología',
+        color: '#3b82f6',
+      },
+    }),
+    prisma.categoria.upsert({
+      where: { nombre: 'Estético' },
+      update: {},
+      create: {
+        nombre: 'Estético',
+        descripcion: 'Servicios de estética dental',
+        color: '#ec4899',
+      },
+    }),
+    prisma.categoria.upsert({
+      where: { nombre: 'Cirugía' },
+      update: {},
+      create: {
+        nombre: 'Cirugía',
+        descripcion: 'Procedimientos quirúrgicos',
+        color: '#ef4444',
+      },
+    }),
+    prisma.categoria.upsert({
+      where: { nombre: 'Ortodoncia' },
+      update: {},
+      create: {
+        nombre: 'Ortodoncia',
+        descripcion: 'Tratamientos de ortodoncia',
+        color: '#8b5cf6',
+      },
+    }),
+    prisma.categoria.upsert({
+      where: { nombre: 'Preventivo' },
+      update: {},
+      create: {
+        nombre: 'Preventivo',
+        descripcion: 'Servicios preventivos y limpieza',
+        color: '#10b981',
+      },
+    }),
+    prisma.categoria.upsert({
+      where: { nombre: 'Restaurativo' },
+      update: {},
+      create: {
+        nombre: 'Restaurativo',
+        descripcion: 'Restauraciones y empastes',
+        color: '#f59e0b',
+      },
+    }),
+    prisma.categoria.upsert({
+      where: { nombre: 'Endodoncia' },
+      update: {},
+      create: {
+        nombre: 'Endodoncia',
+        descripcion: 'Tratamientos de endodoncia',
+        color: '#6366f1',
+      },
+    }),
+  ]);
+
+  // Crear un mapa de categorías por nombre para fácil acceso
+  const categoriasMap = {};
+  categorias.forEach(cat => {
+    categoriasMap[cat.nombre] = cat.id;
+  });
+
   // Crear servicios
   console.log('🦷 Creando servicios...');
   await Promise.all([
@@ -195,7 +277,7 @@ async function main() {
         descripcion: 'Limpieza dental profesional con ultrasonido',
         precio: 500.00,
         duracion: 45,
-        categoria: 'Preventivo',
+        categoriaId: categoriasMap['Preventivo'],
       },
     }),
     prisma.servicio.create({
@@ -204,7 +286,7 @@ async function main() {
         descripcion: 'Restauración con resina fotocurable',
         precio: 800.00,
         duracion: 60,
-        categoria: 'Restaurativo',
+        categoriaId: categoriasMap['Restaurativo'],
       },
     }),
     prisma.servicio.create({
@@ -213,7 +295,7 @@ async function main() {
         descripcion: 'Extracción de pieza dental sin complicaciones',
         precio: 600.00,
         duracion: 30,
-        categoria: 'Cirugía',
+        categoriaId: categoriasMap['Cirugía'],
       },
     }),
     prisma.servicio.create({
@@ -222,7 +304,7 @@ async function main() {
         descripcion: 'Evaluación y plan de tratamiento de ortodoncia',
         precio: 400.00,
         duracion: 45,
-        categoria: 'Ortodoncia',
+        categoriaId: categoriasMap['Ortodoncia'],
       },
     }),
     prisma.servicio.create({
@@ -231,7 +313,7 @@ async function main() {
         descripcion: 'Tratamiento de conductos',
         precio: 2500.00,
         duracion: 90,
-        categoria: 'Endodoncia',
+        categoriaId: categoriasMap['Endodoncia'],
       },
     }),
     prisma.servicio.create({
@@ -240,7 +322,7 @@ async function main() {
         descripcion: 'Blanqueamiento dental con luz LED',
         precio: 1800.00,
         duracion: 60,
-        categoria: 'Estético',
+        categoriaId: categoriasMap['Estético'],
       },
     }),
   ]);

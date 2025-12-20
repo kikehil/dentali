@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const pacientesController = require('../controllers/pacientesController');
-const { isAuthenticated } = require('../middleware/auth');
+const { isAuthenticated, hasModuleAccess } = require('../middleware/auth');
 
 // Vistas
-router.get('/', isAuthenticated, pacientesController.index);
+router.get('/', isAuthenticated, hasModuleAccess('/pacientes'), pacientesController.index);
 router.get('/crear', isAuthenticated, pacientesController.create);
 router.post('/crear', isAuthenticated, pacientesController.store);
 router.get('/:id', isAuthenticated, pacientesController.show);

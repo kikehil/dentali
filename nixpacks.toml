@@ -11,3 +11,15 @@ cmds = ["npm run build"]
 cmd = "npx prisma migrate deploy && npm start"
 
 
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-<header class="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+<header class="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex-shrink-0">
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-xl font-bold text-gray-800"><%= title %></h1>
@@ -10,10 +10,30 @@
     
     <div class="flex items-center gap-3">
       <% if (currentPath && currentPath.startsWith('/pos')) { %>
-      <!-- Botón Corte de Caja - Solo en módulo POS -->
+      <!-- Saldos en tiempo real - Solo en módulo POS -->
+      <div id="saldosContainer" class="flex items-center gap-2 mr-2">
+        <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+          <p class="text-xs text-green-600 font-medium">Efectivo</p>
+          <p id="saldoEfectivo" class="text-sm font-bold text-green-700">$0.00</p>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+          <p class="text-xs text-blue-600 font-medium">BBVA</p>
+          <p id="saldoBbva" class="text-sm font-bold text-blue-700">$0.00</p>
+        </div>
+        <div class="bg-purple-50 border border-purple-200 rounded-lg px-3 py-1.5">
+          <p class="text-xs text-purple-600 font-medium">Azteca</p>
+          <p id="saldoAzteca" class="text-sm font-bold text-purple-700">$0.00</p>
+        </div>
+        <div class="bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">
+          <p class="text-xs text-indigo-600 font-medium">Mercado Pago</p>
+          <p id="saldoMercadoPago" class="text-sm font-bold text-indigo-700">$0.00</p>
+        </div>
+      </div>
+      
+      <!-- Botones de acción -->
       <button onclick="abrirModalCorteManual()" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm font-medium">
         <i class="fas fa-cut"></i>
-        <span>Corte de Caja</span>
+        <span>Realizar Corte</span>
       </button>
       <% } %>
       <% if (currentPath && currentPath.startsWith('/pacientes')) { %>

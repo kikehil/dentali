@@ -21,5 +21,11 @@ router.post('/servicios', isAuthenticated, isAdmin, posController.saveServicio);
 router.get('/productos', isAuthenticated, isAdmin, posController.productos);
 router.post('/productos', isAuthenticated, isAdmin, posController.saveProducto);
 
+// Categorías (solo admin)
+router.use('/categorias', require('./categoriasRoutes'));
+
+// Usuarios (solo admin)
+router.use('/usuarios', require('./usuariosRoutes'));
+
 module.exports = router;
 
